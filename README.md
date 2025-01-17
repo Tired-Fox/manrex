@@ -1,6 +1,6 @@
 # ManRex
 
-A Rust based [MangaDex]() client. This is a light, yet powerful, client to interact with the MangaDex API.
+A Rust based [MangaDex](https://mangadex.org/) client. This is a light, yet powerful, client to interact with the MangaDex API.
 
 ## Disclaimer
 
@@ -16,7 +16,6 @@ This project requests that all users adhere to MangaDex's [Acceptable Usage Poli
 
 - Full `MangaDex` public API implementation (within reason) found [here](https://api.mangadex.org/docs/swagger.html#/) with it's docs found [here](https://api.mangadex.org/docs/)
 - Opt-in client side rate limiting to avoid hitting the API's automatic rate limiting
-- Opt-in customizable request caching to limit redundent calls to the API
 - Caching of endpoints like the `/at-home` api that gives limited lifetime urls and endpoints. ([ref](https://api.mangadex.org/docs/04-chapter/retrieving-chapter/#howto))
 - Automatic image success/failure reporting ([ref](https://api.mangadex.org/docs/04-chapter/retrieving-chapter/#mangadexhome-load-successes-failures-and-retries))
 - Generic enough client that can be used in web, application, tui, cli, and other environments.
@@ -29,11 +28,14 @@ limit or HTTP rate limit to reset. If there is repeat and excesive offenses, the
 To help the consumer to avoid this, this client has rate limiting and caching solutions builtin that are opt-in by the consumer. This will keep the rate limits, along with contributers to the rate limit, to a minimum allowing the consumer to better work
 around them without hitting a temporary ban.
 
-## Technology
+## Sources
 
 - [rust-lang](https://www.rust-lang.org/)
 - [Hypr](https://hyper.rs/)
 - [MangaDex](https://api.mangadex.org/docs/#acceptable-usage-policy)
+- [MangaDex Redoc](https://api.mangadex.org/docs/redoc.html#tag/Manga/operation/get-manga-random)
+- [MangaDex Swagger](https://api.mangadex.org/docs/swagger.html#/)
+- [MangaDex Endpoint Rate Limiting](https://api.mangadex.org/docs/2-limitations/#endpoint-specific-rate-limits)
 
 ## Other Projects
 
