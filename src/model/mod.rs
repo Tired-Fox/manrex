@@ -1,3 +1,48 @@
+use serde::{Deserialize, Serialize};
+
+use crate::{error::MangaDexError, Error};
+
+pub mod client;
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all="camelCase", tag="result")]
+pub enum MangaDexResponse<D> {
+    Ok(D),
+    Error { errors: Vec<MangaDexError> }
+}
+
+impl<D> MangaDexResponse<D> {
+    pub fn ok(self) -> Result<D, Error> {
+        match self {
+            Self::Ok(data) => Ok(data),
+            Self::Error { errors } => Err(Error::group(errors))
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct Paginated<D: std::fmt::Debug> {
+    data: D,
+    offset: usize,
+    limit: usize,
+    total: usize,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all="camelCase")]
+pub enum Order {
+    Asc,
+    Desc,
+}
+impl std::fmt::Display for Order {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Asc => write!(f, "asc"),
+            Self::Desc => write!(f, "desc"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 #[serde(rename_all="snake_case")]
 pub enum Demographic {

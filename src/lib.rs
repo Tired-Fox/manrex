@@ -1,6 +1,8 @@
 mod error;
 
-pub use error::Error;
 
-pub mod client;
-pub mod types;
+mod client;
+pub mod model;
+
+pub use error::Error;
+pub use client::{Client, auth};
