@@ -13,6 +13,7 @@ use crate::model::{client::{ApiClient, ClientFilter}, MangaDexResponse, Paginate
 use auth::OAuth;
 use chrono::{DateTime, Duration, Local};
 use reqwest::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
+use serde_json::json;
 
 use crate::Error;
 pub use request::{Request, ExtendParams, IntoUri};
@@ -101,6 +102,25 @@ impl<T: Clone> Cache<T> {
     }
 }
 
+pub trait Optional<T> {
+    fn optional(self) -> T;
+}
+
+impl<T: Default> Optional<T> for Option<T> {
+    fn optional(self) -> T {
+        match self {
+            Some(value) => value,
+            None => T::default()
+        }
+    }
+}
+
+impl<T> Optional<T> for T {
+    fn optional(self) -> T {
+        self
+    }
+}
+
 pub struct Client {
     oauth: OAuth,
     //rate_limit: RateLimiter,
@@ -141,16 +161,45 @@ impl Client {
 
     pub async fn get_clients(
         &mut self,
-        filters: Option<ClientFilter>,
+        filters: impl Optional<ClientFilter>,
     ) -> Result<Paginated<Vec<ApiClient>>, Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
-        let mut res = Request::get((MangaDex::Api, Endpoint::Client))
+        let res = Request::get((MangaDex::Api, Endpoint::Client))
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .params_opt(filters)
+            .params(filters.optional())
+            .send()
+            .await?;
+
+        let body: MangaDexResponse<Paginated<Vec<ApiClient>>> = res.json().await?;
+        body.ok()
+    }
+
+    pub async fn create_client(&mut self, name: impl std::fmt::Display, description: Option<String>, version: usize) -> Result<Paginated<Vec<ApiClient>>, Error> {
+        if self.oauth().expired()? {
+            self.oauth.refresh().await?;
+        }
+
+        let mut body = json!({
+            "name": name.to_string(),
+            "profile": "personal",
+            "version": version,
+        });
+
+        if let Some(description) = description {
+            body
+                .as_object_mut()
+                .unwrap()
+                .insert("description".into(), serde_json::Value::String(description));
+        }
+
+        let res = Request::post((MangaDex::Api, Endpoint::Client))
+            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
+            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .json(&body)?
             .send()
             .await?;
 
