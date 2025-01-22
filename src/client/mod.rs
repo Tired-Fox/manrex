@@ -5,18 +5,18 @@
     The middleware will either pass to the next middleware or response with a response.
 */
 
-mod request;
+pub(crate) mod request;
 pub mod auth;
 
-use crate::model::{client::{ApiClient, ClientFilter}, MangaDexResponse, Paginated};
+use crate::{error::ResponseToError, model::{at_home::AtHome, author::{Author, AuthorFilter}, chapter::{Chapter, ChapterFilter, UpdateChapter}, client::{ApiClient, ClientFilter, ClientInclude}, Data, Paginated}};
 
 use auth::OAuth;
 use chrono::{DateTime, Duration, Local};
 use reqwest::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
-use serde_json::json;
+use serde_json::{json, Value};
 
 use crate::Error;
-pub use request::{Request, ExtendParams, IntoUri};
+pub use request::{Request, ExtendParams};
 
 pub static CLIENT_NAME: &str = std::env!("CARGO_PKG_NAME");
 pub static CLIENT_VERSION: &str = std::env!("CARGO_PKG_VERSION");
@@ -77,6 +77,9 @@ impl std::fmt::Display for MangaDex {
 pub enum Endpoint {
     Ping,
     Client,
+    AtHome,
+    Chapter,
+    Author,
 }
 
 impl std::fmt::Display for Endpoint {
@@ -84,6 +87,9 @@ impl std::fmt::Display for Endpoint {
         match self {
             Self::Ping => write!(f, "ping"),
             Self::Client => write!(f, "client"),
+            Self::AtHome => write!(f, "at-home/server"),
+            Self::Chapter => write!(f, "chapter"),
+            Self::Author => write!(f, "author"),
         }
     }
 }
@@ -102,27 +108,46 @@ impl<T: Clone> Cache<T> {
     }
 }
 
-pub trait Optional<T> {
-    fn optional(self) -> T;
+/// Allows for any type that implements `Into` for the inner type to be automatically cast.
+///
+/// This will allow for paramters that can be `None` or an unwrapped `Some` value.
+///
+/// # Example
+///
+/// ```
+/// use manrex::client::Optional;
+///
+/// fn test<O: Optional<String, M>, M>(name: O) {
+///     match name.optional() {
+///         Some(value) => /* String */,
+///         None => /* No Value */
+///     }
+/// }
+///
+/// test(None);
+/// test("ManRex");
+/// test(String::from("ManRex"));
+/// /* ... and anything else that implements `Into` for `String` */
+/// ```
+pub trait Optional<T, M=()> {
+    fn optional(self) -> Option<T>;
 }
 
-impl<T: Default> Optional<T> for Option<T> {
-    fn optional(self) -> T {
-        match self {
-            Some(value) => value,
-            None => T::default()
-        }
-    }
-}
-
-impl<T> Optional<T> for T {
-    fn optional(self) -> T {
+impl<T> Optional<T> for Option<T> {
+    fn optional(self) -> Option<T> {
         self
     }
 }
 
+pub struct IntoOptionalConcrete;
+impl<A: Into<T>, T> Optional<T, IntoOptionalConcrete> for A {
+    fn optional(self) -> Option<T> {
+        Some(self.into())
+    }
+}
+
 pub struct Client {
-    oauth: OAuth,
+    pub(crate) oauth: OAuth,
     //rate_limit: RateLimiter,
     //at_home_cache: BTreeMap<String, Cache<Chapter>>
 }
@@ -154,14 +179,18 @@ impl Client {
 
         Ok(())
     }
+}
 
-    /*
-    * -----[ AUTHORIZED CLIENTS ]-----
-    */
+/*
+* -----[ AUTHORIZED CLIENTS ]-----
+*/
 
-    pub async fn get_clients(
+// ---[ Client Endpoints ]---
+impl Client {
+    /// Get a list of clients based on the provided filters
+    pub async fn get_clients<M>(
         &mut self,
-        filters: impl Optional<ClientFilter>,
+        filters: impl Optional<ClientFilter, M>,
     ) -> Result<Paginated<Vec<ApiClient>>, Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
@@ -170,15 +199,15 @@ impl Client {
         let res = Request::get((MangaDex::Api, Endpoint::Client))
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .params(filters.optional())
+            .params_opt(filters.optional())
             .send()
             .await?;
 
-        let body: MangaDexResponse<Paginated<Vec<ApiClient>>> = res.json().await?;
-        body.ok()
+        res.manga_dex_response::<Paginated<Vec<ApiClient>>>().await
     }
 
-    pub async fn create_client(&mut self, name: impl std::fmt::Display, description: Option<String>, version: usize) -> Result<Paginated<Vec<ApiClient>>, Error> {
+    /// Create a new personal client
+    pub async fn create_client<M>(&mut self, name: impl std::fmt::Display, description: impl Optional<String, M>) -> Result<ApiClient, Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -186,10 +215,10 @@ impl Client {
         let mut body = json!({
             "name": name.to_string(),
             "profile": "personal",
-            "version": version,
+            "version": 1
         });
 
-        if let Some(description) = description {
+        if let Some(description) = description.optional() {
             body
                 .as_object_mut()
                 .unwrap()
@@ -203,37 +232,202 @@ impl Client {
             .send()
             .await?;
 
-        let body: MangaDexResponse<Paginated<Vec<ApiClient>>> = res.json().await?;
-        body.ok()
+        res.manga_dex_response::<Data<ApiClient>>().await
+    }
+    
+    /// Delete a client
+    pub async fn delete_client(&mut self, id: impl std::fmt::Display) -> Result<(), Error> {
+        if self.oauth().expired()? {
+            self.oauth.refresh().await?;
+        }
+
+        let res = Request::delete((MangaDex::Api, Endpoint::Client))
+            .join(id.to_string())
+            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
+            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .send()
+            .await?;
+
+        res.manga_dex_response::<()>().await
     }
 
-    ///// `/manga/random`
-    //async fn get_random_manga(&mut self) -> Result<Manga, Error> {
-    //    self.rate_limit.request(Endpoint::GetRandomManga)?;
-    //
-    //    // TODO: Fetch Data...
-    //    // TODO: Update rate limit
-    //
-    //    Ok(Manga {})
-    //}
+    /// Edit a client's version and description
+    pub async fn edit_client(&mut self, id: impl std::fmt::Display, version: usize, description: impl std::fmt::Display) -> Result<ApiClient, Error> {
+        if self.oauth().expired()? {
+            self.oauth.refresh().await?;
+        }
 
-    //async fn get_chapter(&mut self, id: impl std::fmt::Display) -> Result<Chapter, Error> {
-    //    let id = id.to_string();
-    //    match self.at_home_cache.get(&id) {
-    //        Some(at_home) if at_home.expires > Local::now() => {
-    //            return Ok(at_home.data.clone());
-    //        },
-    //        _ => {}
-    //    }
-    //    self.rate_limit.request(Endpoint::GetChapter)?;
-    //
-    //    // TODO: Fetch Data
-    //    let result = Chapter {};
-    //
-    //    // TODO: Update rate limit
-    //    self.rate_limit.update(Endpoint::GetChapter, None);
-    //    self.at_home_cache.insert(id, Cache::new(result.clone(), Duration::minutes(15)));
-    //
-    //    Ok(result)
-    //}
+        let res = Request::post((MangaDex::Api, Endpoint::Client))
+            .join(id.to_string())
+            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
+            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .json(&json!({
+                "description": description.to_string(),
+                "version": version,
+            }))?
+            .send()
+            .await?;
+
+        res.manga_dex_response::<Data<ApiClient>>().await
+    }
+
+    /// Get a client by it's id
+    pub async fn get_client_by_id<M>(&mut self, id: impl std::fmt::Display, includes: impl Optional<Vec<ClientInclude>, M>) -> Result<ApiClient, Error> {
+        if self.oauth().expired()? {
+            self.oauth.refresh().await?;
+        }
+
+        let res = Request::get((MangaDex::Api, Endpoint::Client))
+            .join(id.to_string())
+            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
+            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .param_opt("includes", includes.optional())
+            .send()
+            .await?;
+
+        res.manga_dex_response::<Data<ApiClient>>().await
+    }
+
+    /// Get a client's secret
+    pub async fn get_secret_by_client_id(&mut self, id: impl std::fmt::Display) -> Result<String, Error> {
+        if self.oauth().expired()? {
+            self.oauth.refresh().await?;
+        }
+
+        let res = Request::get((MangaDex::Api, Endpoint::Client))
+            .join(id.to_string())
+            .join("secret")
+            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
+            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .send()
+            .await?;
+
+        res.manga_dex_response::<Data<String>>().await
+    }
+
+    /// Regenerate a clients secret
+    pub async fn regenerate_client_secret(&mut self, id: impl std::fmt::Display) -> Result<String, Error> {
+        if self.oauth().expired()? {
+            self.oauth.refresh().await?;
+        }
+
+        let res = Request::post((MangaDex::Api, Endpoint::Client))
+            .join(id.to_string())
+            .join("secret")
+            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
+            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .json(&json!({}))?
+            .send()
+            .await?;
+
+        res.manga_dex_response::<Data<String>>().await
+    }
+}
+
+// ---[ AtHome Endpoints ]---
+impl Client {
+    pub async fn get_at_home_server(&mut self, chapter: impl std::fmt::Display, force_port: bool) -> Result<AtHome, Error> {
+        if self.oauth().expired()? {
+            self.oauth.refresh().await?;
+        }
+
+        let res = Request::get((MangaDex::Api, Endpoint::AtHome))
+            .join(chapter.to_string())
+            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
+            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .param_opt("forcePort443", force_port.then_some(true))
+            .send()
+            .await?;
+
+        res.manga_dex_response::<AtHome>().await
+    }
+}
+
+// ---[ Author Endpoints ]---
+impl Client {
+    pub async fn list_authors(&mut self, filters: impl Optional<AuthorFilter>) -> Result<Paginated<Vec<Author>>, Error> {
+        if self.oauth().expired()? {
+            self.oauth.refresh().await?;
+        }
+
+        let res = Request::get((MangaDex::Api, Endpoint::Author))
+            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
+            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .params_opt(filters.optional())
+            .send()
+            .await?;
+
+        res.manga_dex_response::<Paginated<Vec<Author>>>().await
+    }
+}
+
+// ---[ Chapter Endpoints ]---
+impl Client {
+    pub async fn list_chapters(&mut self, filters: impl Optional<ChapterFilter>) -> Result<Paginated<Vec<Chapter>>, Error> {
+        if self.oauth().expired()? {
+            self.oauth.refresh().await?;
+        }
+
+        let res = Request::get((MangaDex::Api, Endpoint::Chapter))
+            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
+            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .params_opt(filters.optional())
+            .send()
+            .await?;
+
+        res.manga_dex_response::<Paginated<Vec<Chapter>>>().await
+    }
+
+    pub async fn get_chapter(&mut self, id: impl std::fmt::Display) -> Result<Chapter, Error> {
+        if self.oauth().expired()? {
+            self.oauth.refresh().await?;
+        }
+
+        let res = Request::get((MangaDex::Api, Endpoint::Chapter))
+            .join(id.to_string())
+            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
+            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .send()
+            .await?;
+
+        res.manga_dex_response::<Data<Chapter>>().await
+    }
+
+    pub async fn update_chapter(
+        &mut self,
+        id: impl std::fmt::Display,
+        chapter: UpdateChapter,
+    ) -> Result<Chapter, Error> {
+        if self.oauth().expired()? {
+            self.oauth.refresh().await?;
+        }
+
+        let res = Request::put((MangaDex::Api, Endpoint::Chapter))
+            .join(id.to_string())
+            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
+            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .json(&chapter)?
+            .send()
+            .await?;
+
+        res.manga_dex_response::<Data<Chapter>>().await
+    }
+
+    pub async fn delete_chapter(
+        &mut self,
+        id: impl std::fmt::Display,
+    ) -> Result<(), Error> {
+        if self.oauth().expired()? {
+            self.oauth.refresh().await?;
+        }
+
+        let res = Request::delete((MangaDex::Api, Endpoint::Chapter))
+            .join(id.to_string())
+            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
+            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .send()
+            .await?;
+
+        res.manga_dex_response::<()>().await
+    }
 }

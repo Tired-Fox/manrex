@@ -22,6 +22,11 @@ dotenvy = { version = "0.15.7", optional = true }
 serde_json = "1.0.137"
 dirs = "6.0.0"
 serde_urlencoded = "0.7.1"
+serde_json_path_to_error = "0.1.4"
+strum = { version = "0.26.3", features = ["derive"] }
+strum_macros = "0.26.4"
+base64 = "0.22.1"
+paste = "1.0.15"
 
 [features]
 env = ["dep:dotenvy"]

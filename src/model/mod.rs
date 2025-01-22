@@ -3,12 +3,15 @@ use serde::{Deserialize, Serialize};
 use crate::{error::MangaDexError, Error};
 
 pub mod client;
+pub mod at_home;
+pub mod chapter;
+pub mod author;
 
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all="camelCase", tag="result")]
 pub enum MangaDexResponse<D> {
     Ok(D),
-    Error { errors: Vec<MangaDexError> }
+    Error { errors: Vec<MangaDexError> },
 }
 
 impl<D> MangaDexResponse<D> {
@@ -20,12 +23,48 @@ impl<D> MangaDexResponse<D> {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Paginated<D: std::fmt::Debug> {
+/// Convert the parsed response into the expected data
+pub(crate) trait IntoData<D> {
+    fn into_data(self) -> D;
+}
+
+impl<D> IntoData<D> for D {
+    fn into_data(self) -> D { self }
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct Paginated<D> {
     data: D,
     offset: usize,
     limit: usize,
     total: usize,
+}
+
+impl<D> IntoData<D> for Paginated<D> {
+    fn into_data(self) -> D {
+        self.data
+    }
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct Data<D> {
+    data: D
+}
+impl<D> IntoData<D> for Data<D> {
+    fn into_data(self) -> D {
+        self.data
+    }
+}
+
+impl<D: std::fmt::Debug> std::fmt::Debug for Paginated<D> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Paginated")
+            .field("data", &self.data)
+            .field("limit", &self.limit)
+            .field("offset", &self.offset)
+            .field("total", &self.total)
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
@@ -43,8 +82,25 @@ impl std::fmt::Display for Order {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase")]
+pub struct RelationshipAttributes {
+    pub description: Option<String>
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all="camelCase")]
+pub struct Relationship {
+    pub id: String,
+    #[serde(rename="type")]
+    pub typ: Option<String>,
+    pub related: Option<Related>,
+    pub attributes: Option<RelationshipAttributes>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
 #[serde(rename_all="snake_case")]
+#[strum(serialize_all="snake_case")]
 pub enum Demographic {
     Shounen,
     Shoujo,
@@ -52,8 +108,9 @@ pub enum Demographic {
     Seinen,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
 #[serde(rename_all="snake_case")]
+#[strum(serialize_all="snake_case")]
 pub enum Status {
     Ongoing,
     Completed,
@@ -61,8 +118,9 @@ pub enum Status {
     Cancelled
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
 #[serde(rename_all="snake_case")]
+#[strum(serialize_all="snake_case")]
 pub enum ReadingStatus {
     Reading,
     OnHold,
@@ -72,8 +130,9 @@ pub enum ReadingStatus {
     Completed,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
 #[serde(rename_all="snake_case")]
+#[strum(serialize_all="snake_case")]
 pub enum ContentRating {
     Safe,
     Suggestive,
@@ -81,36 +140,39 @@ pub enum ContentRating {
     Pornographic,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
 #[serde(rename_all="snake_case")]
+#[strum(serialize_all="snake_case")]
 pub enum Ordering {
     Asc,
     Dsc
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
 #[serde(rename_all="snake_case")]
+#[strum(serialize_all="snake_case")]
 pub enum Visibility {
     Public,
     Private,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
-#[serde(rename_all="snake_case")]
-pub enum Relationship {
-    Manga,
-    Chapter,
-    CoverArt,
-    Author,
-    Artist,
-    ScanlationGroup,
-    Tag,
-    User,
-    CustomList
-}
+//#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+//#[serde(rename_all="snake_case")]
+//pub enum Relationship {
+//    Manga,
+//    Chapter,
+//    CoverArt,
+//    Author,
+//    Artist,
+//    ScanlationGroup,
+//    Tag,
+//    User,
+//    CustomList
+//}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
 #[serde(rename_all="snake_case")]
+#[strum(serialize_all="snake_case")]
 pub enum Related {
     /// A monochrome variant of this manga
     Monochrome,
@@ -146,8 +208,9 @@ pub enum Related {
     AlternateVersion,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
 #[serde(rename_all="lowercase")]
+#[strum(serialize_all="lowercase")]
 pub enum MangaLinks {
     AL,
     AP,

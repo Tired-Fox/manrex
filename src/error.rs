@@ -1,4 +1,9 @@
+use std::future::Future;
+
 use reqwest::{header::ToStrError, StatusCode};
+use serde::de::DeserializeOwned;
+
+use crate::{model::{IntoData, MangaDexResponse}, JsonWithErrorPath};
 
 #[derive(Debug, serde::Deserialize, serde::Serialize)]
 pub struct MangaDexError {
@@ -9,29 +14,44 @@ pub struct MangaDexError {
     context: Option<String>,
 }
 
-#[derive(Debug)]
 pub enum Error {
-    /// HTTP 429 Rate Limit Reached
-    RateLimit,
     Authorization,
-    UnknownHost,
 
-    Redirect(String),
     Http(StatusCode, String),
-    MangaDex(MangaDexError),
-    Group(Vec<Error>),
 
+    MangaDex(MangaDexError),
+
+    Group(Vec<Error>),
+    Validation {
+        name: String,
+        expect: String,
+        actual: String,
+    },
     Custom(String),
 }
 
+impl serde::ser::Error for Error {
+    fn custom<T>(msg:T) -> Self where T:std::fmt::Display {
+        Self::custom(msg)
+    }
+}
+
+impl serde::de::Error for Error {
+    fn custom<T>(msg:T) -> Self where T:std::fmt::Display {
+        Self::custom(msg)
+    }
+}
+
 impl std::error::Error for Error {}
+impl std::fmt::Debug for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{self}")
+    }
+}
 
 impl Error {
     pub fn custom(msg: impl std::fmt::Display) -> Self {
         Self::Custom(msg.to_string())
-    }
-    pub fn redirect(msg: impl std::fmt::Display) -> Self {
-        Self::Redirect(msg.to_string())
     }
     pub fn http(status: StatusCode, msg: impl std::fmt::Display) -> Self {
         Self::Http(status, msg.to_string())
@@ -44,12 +64,10 @@ impl Error {
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::RateLimit => write!(f, "rate limit has been reached"),
             Self::Authorization => write!(f, "attempt to call an authorized endpoint with an unauthorized client"),
-            Self::UnknownHost => write!(f, "unknown host in http request"),
             Self::Custom(msg) => write!(f, "{msg}"),
-            Self::Redirect(loc) => write!(f, "http 300 redirect to {loc}"),
             Self::Http(status, msg) => write!(f, "http [{}] {msg}", status.as_u16()),
+            Self::Validation { name, expect, actual } => write!(f, "invalid paramter '{name}': expected {expect}, but got {actual}"),
             Self::Group(errors) => {
                 write!(f, "Error Group:")?;
                 for error in errors {
@@ -125,18 +143,25 @@ impl From<MangaDexError> for Error {
     }
 }
 
-pub trait ResponseToError {
-    fn to_error(&self) -> Result<(), Error>;
+impl From<serde_json_path_to_error::Error> for Error {
+    fn from(value: serde_json_path_to_error::Error) -> Self { 
+        Self::custom(value)
+    }
 }
 
-impl ResponseToError for reqwest::Response {
-    fn to_error(&self) -> Result<(), Error> {
-        if self.status().is_client_error() || self.status().is_server_error() {
-            Err(Error::http(self.status(), self.status().canonical_reason().unwrap_or(self.status().as_str())))
+pub(crate) trait ResponseToError<R> {
+    fn manga_dex_response<T: DeserializeOwned + IntoData<R>>(self) -> impl Future<Output=Result<R, Error>>;
+}
+
+impl<R> ResponseToError<R> for reqwest::Response {
+    async fn manga_dex_response<T: DeserializeOwned + IntoData<R>>(self) -> Result<R, Error> {
+        if self.status() == StatusCode::UNAUTHORIZED {
+            Err(Error::Authorization)
         } else if self.status().is_redirection() {
-            Err(Error::redirect(self.headers().get("Location").unwrap().to_str()?))
+            Err(Error::http(self.status(), self.status().canonical_reason().unwrap_or(self.status().as_str())))
         } else {
-            Ok(())
+            let response: MangaDexResponse<T> = self.json_with_error_path().await?;
+            response.ok().map(|v| v.into_data())
         }
     }
 }
