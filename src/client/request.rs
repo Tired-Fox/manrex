@@ -1,7 +1,7 @@
 use std::{collections::BTreeMap, path::{Path, PathBuf}};
 
 use crate::Error;
-use reqwest::{header::{HeaderMap, HeaderValue, IntoHeaderName, CONTENT_TYPE}, Body, Client, Method};
+use reqwest::{header::{HeaderMap, HeaderValue, IntoHeaderName, CONTENT_TYPE}, multipart, Body, Client, Method};
 
 #[derive(Debug, Clone, strum::EnumIs, PartialEq)]
 pub enum Param {
@@ -213,29 +213,56 @@ impl Request {
         self
     }
 
-    pub fn body(mut self, body: impl Into<Body>) -> Self {
-        self.body.replace(body.into());
-        self
+    pub fn body(self, body: impl Into<Body>) -> reqwest::RequestBuilder {
+        let url = if self.params.is_empty() {
+            self.uri.display().to_string().replace("\\", "/")
+        } else {
+            format!("{}?{}", self.uri.display().to_string().replace("\\", "/"), self.params)
+        };
+
+        Client::new()
+            .request(self.method, url)
+            .headers(self.headers)
+            .body(body)
     }
 
-    pub fn json<S: serde::Serialize>(mut self, body: &S) -> Result<Self, Error> {
-        match serde_json::to_string(&body) {
-            Ok(body) => {
-                self.body.replace(body.into());
-                Ok(self.header(CONTENT_TYPE, "application/json"))
-            },
-            Err(err) => Err(Error::from(err))
-        }
+    pub fn json<S: serde::Serialize>(self, body: &S) -> reqwest::RequestBuilder {
+        let url = if self.params.is_empty() {
+            self.uri.display().to_string().replace("\\", "/")
+        } else {
+            format!("{}?{}", self.uri.display().to_string().replace("\\", "/"), self.params)
+        };
+
+        Client::new()
+            .request(self.method, url)
+            .headers(self.headers)
+            .json(body)
     }
 
-    pub fn form<S: serde::Serialize>(mut self, body: &S) -> Result<Self, Error> {
-        match serde_urlencoded::to_string(body) {
-            Ok(body) => {
-                self.body.replace(body.into());
-                Ok(self.header(CONTENT_TYPE, "application/x-www-form-urlencoded"))
-            },
-            Err(err) => Err(Error::from(err))
-        }
+    pub fn multipart(self, form: multipart::Form) -> reqwest::RequestBuilder {
+        let url = if self.params.is_empty() {
+            self.uri.display().to_string().replace("\\", "/")
+        } else {
+            format!("{}?{}", self.uri.display().to_string().replace("\\", "/"), self.params)
+        };
+
+        Client::new()
+            .request(self.method, url)
+            .headers(self.headers)
+            .multipart(form)
+    }
+
+    pub fn form<S: serde::Serialize>(self, body: &S) -> reqwest::RequestBuilder {
+        let url = if self.params.is_empty() {
+            self.uri.display().to_string().replace("\\", "/")
+        } else {
+            format!("{}?{}", self.uri.display().to_string().replace("\\", "/"), self.params)
+        };
+
+        Client::new()
+            .request(self.method, url)
+            .headers(self.headers)
+            .form(body)
     }
 
     pub async fn send(self) -> Result<reqwest::Response, Error> {

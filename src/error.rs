@@ -1,7 +1,11 @@
-use std::future::Future;
+use std::{future::Future, pin::Pin};
 
+use bytes::Bytes;
+use futures_util::{Stream, StreamExt, TryStreamExt};
+use tokio::io::{AsyncWriteExt, AsyncWrite};
 use reqwest::{header::ToStrError, StatusCode};
 use serde::de::DeserializeOwned;
+use tokio_util::io::StreamReader;
 
 use crate::{model::{IntoData, MangaDexResponse}, JsonWithErrorPath};
 
@@ -145,12 +149,14 @@ impl From<MangaDexError> for Error {
 
 impl From<serde_json_path_to_error::Error> for Error {
     fn from(value: serde_json_path_to_error::Error) -> Self { 
-        Self::custom(value)
+        Self::custom(format!("{}: {value}", value.path()))
     }
 }
 
+pub type DataStream = StreamReader<Pin<Box<dyn Stream<Item=std::io::Result<Bytes>>>>, Bytes>;
 pub(crate) trait ResponseToError<R> {
     fn manga_dex_response<T: DeserializeOwned + IntoData<R>>(self) -> impl Future<Output=Result<R, Error>>;
+    fn stream(self) -> impl Future<Output=Result<DataStream, Error>>;
 }
 
 impl<R> ResponseToError<R> for reqwest::Response {
@@ -162,6 +168,22 @@ impl<R> ResponseToError<R> for reqwest::Response {
         } else {
             let response: MangaDexResponse<T> = self.json_with_error_path().await?;
             response.ok().map(|v| v.into_data())
+        }
+    }
+
+    async fn stream(self) -> Result<StreamReader<Pin<Box<dyn Stream<Item=std::io::Result<Bytes>>>>, Bytes>, Error> {
+        if self.status() == StatusCode::UNAUTHORIZED {
+            Err(Error::Authorization)
+        } else if self.status().is_redirection() {
+            Err(Error::http(self.status(), self.status().canonical_reason().unwrap_or(self.status().as_str())))
+        } else if self.status().is_client_error() {
+            let status = self.status();
+            self.json_with_error_path::<MangaDexResponse<()>>().await?.ok()?;
+            Err(Error::http(status, status.canonical_reason().unwrap_or(status.as_str())))
+        } else {
+            Ok(StreamReader::new(
+                Box::pin(self.bytes_stream().map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e)))
+            ))
         }
     }
 }

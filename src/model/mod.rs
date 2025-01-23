@@ -1,4 +1,10 @@
+use std::collections::BTreeMap;
+
+use author::AuthorAttributes;
+use chapter::ChapterAttributes;
+use cover::CoverAttributes;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::{error::MangaDexError, Error};
 
@@ -6,6 +12,8 @@ pub mod client;
 pub mod at_home;
 pub mod chapter;
 pub mod author;
+pub mod cover;
+pub mod manga;
 
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all="camelCase", tag="result")]
@@ -34,10 +42,10 @@ impl<D> IntoData<D> for D {
 
 #[derive(Deserialize, Serialize)]
 pub struct Paginated<D> {
-    data: D,
-    offset: usize,
-    limit: usize,
-    total: usize,
+    pub data: D,
+    pub offset: usize,
+    pub limit: usize,
+    pub total: usize,
 }
 
 impl<D> IntoData<D> for Paginated<D> {
@@ -82,19 +90,44 @@ impl std::fmt::Display for Order {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all="camelCase")]
-pub struct RelationshipAttributes {
-    pub description: Option<String>
+#[derive(Debug, Clone, PartialEq, Deserialize, strum::EnumIs)]
+#[serde(tag="type", content = "attributes", rename_all="snake_case")]
+pub enum RelationshipAttributes {
+    CoverArt(CoverAttributes),
+    Author(AuthorAttributes),
+    Chapter(ChapterAttributes),
+    // TODO: Remaining types
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+impl RelationshipAttributes {
+    pub fn as_cover_art(self) -> CoverAttributes {
+        match self {
+            Self::CoverArt(ca) => ca,
+            _ => unreachable!("failed to unwrap RelationshipAttributes as CoverAttributes")
+        }
+    }
+
+    pub fn as_author(self) -> AuthorAttributes {
+        match self {
+            Self::Author(c) => c,
+            _ => unreachable!("failed to unwrap RelationshipAttributes as AuthorAttributes")
+        }
+    }
+
+    pub fn as_chapter(self) -> ChapterAttributes {
+        match self {
+            Self::Chapter(c) => c,
+            _ => unreachable!("failed to unwrap RelationshipAttributes as ChapterAttributes")
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all="camelCase")]
 pub struct Relationship {
     pub id: String,
-    #[serde(rename="type")]
-    pub typ: Option<String>,
     pub related: Option<Related>,
+    #[serde(flatten)]
     pub attributes: Option<RelationshipAttributes>,
 }
 
@@ -111,11 +144,31 @@ pub enum Demographic {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
 #[serde(rename_all="snake_case")]
 #[strum(serialize_all="snake_case")]
+pub enum TagGroup {
+    Content,
+    Format,
+    Genre,
+    Theme
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
+#[serde(rename_all="snake_case")]
+#[strum(serialize_all="snake_case")]
 pub enum Status {
     Ongoing,
     Completed,
     Hiatus,
     Cancelled
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
+#[serde(rename_all="snake_case")]
+#[strum(serialize_all="snake_case")]
+pub enum MangaState {
+    Draft,
+    Submitted,
+    Published,
+    Rejected,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]

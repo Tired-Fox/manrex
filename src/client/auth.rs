@@ -168,7 +168,7 @@ impl OAuth {
                 ("password", password.to_string()),
                 ("client_id", self.credentials.id.to_string()),
                 ("client_secret", self.credentials.secret.to_string()),
-            ]))?
+            ]))
             .send()
             .await?
             .error_for_status()?;
@@ -188,7 +188,7 @@ impl OAuth {
                     ("refresh_token", token.refresh.to_string()),
                     ("client_id", self.credentials.id.to_string()),
                     ("client_secret", self.credentials.secret.to_string()),
-                ]))?
+                ]))
                 .send()
                 .await?
                 .error_for_status()?;
