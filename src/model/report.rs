@@ -116,12 +116,12 @@ impl ReportFilter {
     }
 
     pub fn reason_id<S: std::fmt::Display>(mut self, state: S) -> Self {
-        self.reason_id = Some(state);
+        self.reason_id = Some(state.to_string());
         self
     }
 
     pub fn object_id<S: std::fmt::Display>(mut self, state: S) -> Self {
-        self.object_id = Some(state);
+        self.object_id = Some(state.to_string());
         self
     }
 
@@ -140,8 +140,8 @@ impl ExtendParams for ReportFilter {
     fn extend_params(self, request: &mut crate::client::Request) {
         request.add_param_opt("limit", self.limit);
         request.add_param_opt("offset", self.offset);
-        request.add_param_opt("category", self.category);
-        request.add_param_opt("status", self.status);
+        request.add_param_opt("category", self.category.map(|v| v.to_string()));
+        request.add_param_opt("status", self.status.map(|v| v.to_string()));
         request.add_param_opt("reasonId", self.reason_id);
         request.add_param_opt("objectId", self.object_id);
 

@@ -1,0 +1,15 @@
+[package]
+name = "manrex-examples"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name="testing"
+path="src/testing.rs"
+
+[dependencies]
+manrex = { path = "../", features=["env"] }
+dialoguer = "0.11.0"
+futures-util = "0.3.31"
+tokio = { version = "1.43.0", features = ["rt-multi-thread", "macros"] }
+spinoff = "0.8.0"

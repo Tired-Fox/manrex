@@ -4,9 +4,9 @@ use reqwest::{header::{AUTHORIZATION, USER_AGENT}, multipart};
 use serde_json::json;
 
 use crate::{
-    client::{Endpoint, MangaDex, Optional, Request, CLIENT_NAME, CLIENT_VERSION},
+    client::{Endpoint, MangaDex, Request, CLIENT_NAME, CLIENT_VERSION},
     error::ResponseToError,
-    model::{upload::*, Data, Paginated},
+    model::{upload::*, Data},
     Client, Error,
 };
 
