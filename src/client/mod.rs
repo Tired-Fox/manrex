@@ -87,6 +87,7 @@ pub enum Endpoint {
     Manga,
     Rating,
     User,
+    Upload,
     Report,
     Group,
     Settings,
@@ -110,6 +111,7 @@ impl std::fmt::Display for Endpoint {
             Self::Group => write!(f, "group"),
             Self::Settings => write!(f, "settings"),
             Self::Statistics => write!(f, "statistics"),
+            Self::Upload => write!(f, "upload"),
         }
     }
 }

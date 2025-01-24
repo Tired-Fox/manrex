@@ -10,3 +10,4 @@ pub mod scanlation_group;
 pub mod settings;
 pub mod statistics;
 pub mod user;
+pub mod upload;

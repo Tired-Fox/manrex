@@ -22,7 +22,7 @@ impl Client {
             .send()
             .await?;
 
-        ResponseToError::<()>::manga_dex_template::<S>(res).await
+        res.manga_dex_template::<S>().await
     }
 
     pub async fn create_settings_template<S: Serialize + DeserializeOwned>(&mut self, template: &S) -> Result<S, Error> {
@@ -38,7 +38,7 @@ impl Client {
             .send()
             .await?;
 
-        ResponseToError::<()>::manga_dex_template::<S>(res).await
+        res.manga_dex_template::<S>().await
     }
 
     pub async fn get_settings_template_by_version<S: DeserializeOwned>(&mut self, version: impl std::fmt::Display) -> Result<S, Error> {
@@ -54,7 +54,7 @@ impl Client {
             .send()
             .await?;
 
-        ResponseToError::<()>::manga_dex_template::<S>(res).await
+        res.manga_dex_template::<S>().await
     }
 
     pub async fn get_settings<S: DeserializeOwned>(&mut self, version: impl std::fmt::Display) -> Result<Settings<S>, Error> {
