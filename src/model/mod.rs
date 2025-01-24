@@ -1,10 +1,7 @@
-use std::collections::BTreeMap;
-
 use author::AuthorAttributes;
 use chapter::ChapterAttributes;
 use cover::CoverAttributes;
 use serde::{Deserialize, Serialize};
-use serde_json::Value;
 
 use crate::{error::MangaDexError, Error};
 
@@ -14,6 +11,15 @@ pub mod chapter;
 pub mod author;
 pub mod cover;
 pub mod manga;
+pub mod rating;
+pub mod report;
+pub mod scanlation_group;
+pub mod settings;
+pub mod statistics;
+pub mod user;
+mod image;
+
+pub use image::Image;
 
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all="camelCase", tag="result")]
@@ -75,7 +81,7 @@ impl<D: std::fmt::Debug> std::fmt::Debug for Paginated<D> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
 #[serde(rename_all="camelCase")]
 pub enum Order {
     Asc,
@@ -126,7 +132,7 @@ impl RelationshipAttributes {
 #[serde(rename_all="camelCase")]
 pub struct Relationship {
     pub id: String,
-    pub related: Option<Related>,
+    pub related: Option<Relation>,
     #[serde(flatten)]
     pub attributes: Option<RelationshipAttributes>,
 }
@@ -139,6 +145,17 @@ pub enum Demographic {
     Shoujo,
     Josei,
     Seinen,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
+#[serde(rename_all="snake_case")]
+#[strum(serialize_all="snake_case")]
+pub enum Category {
+    Manga,
+    Chapter,
+    ScanlationGroup,
+    User,
+    Author
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
@@ -181,6 +198,14 @@ pub enum ReadingStatus {
     Dropped,
     ReReading,
     Completed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, strum::Display)]
+#[serde(rename_all = "UPPERCASE")]
+#[strum(serialize_all="UPPERCASE")]
+pub enum TagMode {
+    And,
+    Or,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
@@ -226,7 +251,7 @@ pub enum Visibility {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
 #[serde(rename_all="snake_case")]
 #[strum(serialize_all="snake_case")]
-pub enum Related {
+pub enum Relation {
     /// A monochrome variant of this manga
     Monochrome,
     /// A colored variant of this manga

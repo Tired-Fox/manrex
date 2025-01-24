@@ -1,0 +1,12 @@
+pub mod read_markers;
+pub mod manga;
+pub mod ratings;
+pub mod cover;
+pub mod chapter;
+pub mod author;
+pub mod client;
+pub mod report;
+pub mod scanlation_group;
+pub mod settings;
+pub mod statistics;
+pub mod user;

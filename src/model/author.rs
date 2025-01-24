@@ -13,7 +13,6 @@ pub enum AuthorInclude {
     Manga,
 }
 
-
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct AuthorFilter {
     limit: Option<usize>,

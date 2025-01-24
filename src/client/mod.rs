@@ -7,15 +7,13 @@
 
 pub(crate) mod request;
 pub mod auth;
+mod endpoints;
 
-use crate::{error::{DataStream, ResponseToError}, model::{at_home::AtHome, author::{Author, AuthorFilter, AuthorInclude, CreateAuthor, UpdateAuthor}, chapter::{Chapter, ChapterFilter, UpdateChapter}, client::{ApiClient, ClientFilter, ClientInclude}, cover::{Cover, CoverArtFilter, CoverInclude, CoverSize, EditCover, UploadCover}, manga::{Manga, MangaFilter}, Data, Paginated}};
+use crate::{error::ResponseToError, model::at_home::AtHome};
 
 use auth::OAuth;
-use bytes::Bytes;
-use chrono::{DateTime, Duration, Local};
-use futures_util::Stream;
 use reqwest::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
-use serde_json::{json, Value};
+use serde_json::Value;
 
 use crate::Error;
 pub use request::{Request, ExtendParams};
@@ -87,6 +85,12 @@ pub enum Endpoint {
     Captcha,
     Cover,
     Manga,
+    Rating,
+    User,
+    Report,
+    Group,
+    Settings,
+    Statistics,
 }
 
 impl std::fmt::Display for Endpoint {
@@ -100,23 +104,29 @@ impl std::fmt::Display for Endpoint {
             Self::Captcha => write!(f, "captcha"),
             Self::Cover => write!(f, "cover"),
             Self::Manga => write!(f, "manga"),
+            Self::Rating => write!(f, "rating"),
+            Self::User => write!(f, "user"),
+            Self::Report => write!(f, "report"),
+            Self::Group => write!(f, "group"),
+            Self::Settings => write!(f, "settings"),
+            Self::Statistics => write!(f, "statistics"),
         }
     }
 }
 
-pub struct Cache<T: Clone> {
-    expires: DateTime<Local>,
-    data: T
-}
-
-impl<T: Clone> Cache<T> {
-    pub fn new(data: T, duration: Duration) -> Self {
-        Self {
-            expires: Local::now() + duration,
-            data
-        }
-    }
-}
+//pub struct Cache<T: Clone> {
+//    expires: DateTime<Local>,
+//    data: T
+//}
+//
+//impl<T: Clone> Cache<T> {
+//    pub fn new(data: T, duration: Duration) -> Self {
+//        Self {
+//            expires: Local::now() + duration,
+//            data
+//        }
+//    }
+//}
 
 /// Allows for any type that implements `Into` for the inner type to be automatically cast.
 ///
@@ -189,153 +199,7 @@ impl Client {
 
         Ok(())
     }
-}
 
-/*
-* -----[ AUTHORIZED CLIENTS ]-----
-*/
-
-// ---[ Client Endpoints ]---
-impl Client {
-    /// Get a list of clients based on the provided filters
-    pub async fn get_clients<M>(
-        &mut self,
-        filters: impl Optional<ClientFilter, M>,
-    ) -> Result<Paginated<Vec<ApiClient>>, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::get((MangaDex::Api, Endpoint::Client))
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .params_opt(filters.optional())
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Paginated<Vec<ApiClient>>>().await
-    }
-
-    /// Create a new personal client
-    pub async fn create_client<M>(&mut self, name: impl std::fmt::Display, description: impl Optional<String, M>) -> Result<ApiClient, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let mut body = json!({
-            "name": name.to_string(),
-            "profile": "personal",
-            "version": 1
-        });
-
-        if let Some(description) = description.optional() {
-            body
-                .as_object_mut()
-                .unwrap()
-                .insert("description".into(), serde_json::Value::String(description));
-        }
-
-        let res = Request::post((MangaDex::Api, Endpoint::Client))
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .json(&body)
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Data<ApiClient>>().await
-    }
-    
-    /// Delete a client
-    pub async fn delete_client(&mut self, id: impl std::fmt::Display) -> Result<(), Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::delete((MangaDex::Api, Endpoint::Client))
-            .join(id.to_string())
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .send()
-            .await?;
-
-        res.manga_dex_response::<()>().await
-    }
-
-    /// Edit a client's version and description
-    pub async fn edit_client(&mut self, id: impl std::fmt::Display, version: usize, description: impl std::fmt::Display) -> Result<ApiClient, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::post((MangaDex::Api, Endpoint::Client))
-            .join(id.to_string())
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .json(&json!({
-                "description": description.to_string(),
-                "version": version,
-            }))
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Data<ApiClient>>().await
-    }
-
-    /// Get a client by it's id
-    pub async fn get_client_by_id<M>(&mut self, id: impl std::fmt::Display, includes: impl Optional<Vec<ClientInclude>, M>) -> Result<ApiClient, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::get((MangaDex::Api, Endpoint::Client))
-            .join(id.to_string())
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .param_opt("includes", includes.optional())
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Data<ApiClient>>().await
-    }
-
-    /// Get a client's secret
-    pub async fn get_secret_by_client_id(&mut self, id: impl std::fmt::Display) -> Result<String, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::get((MangaDex::Api, Endpoint::Client))
-            .join(id.to_string())
-            .join("secret")
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Data<String>>().await
-    }
-
-    /// Regenerate a clients secret
-    pub async fn regenerate_client_secret(&mut self, id: impl std::fmt::Display) -> Result<String, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::post((MangaDex::Api, Endpoint::Client))
-            .join(id.to_string())
-            .join("secret")
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .json(&json!({}))
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Data<String>>().await
-    }
-}
-
-// ---[ AtHome Endpoints ]---
-impl Client {
     pub async fn get_at_home_server(&mut self, chapter: impl std::fmt::Display, force_port: bool) -> Result<AtHome, Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
@@ -351,90 +215,7 @@ impl Client {
 
         res.manga_dex_response::<AtHome>().await
     }
-}
 
-// ---[ Author Endpoints ]---
-impl Client {
-    pub async fn list_authors<M>(&mut self, filters: impl Optional<AuthorFilter, M>) -> Result<Paginated<Vec<Author>>, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::get((MangaDex::Api, Endpoint::Author))
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .params_opt(filters.optional())
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Paginated<Vec<Author>>>().await
-    }
-
-    pub async fn create_author(&mut self, author: CreateAuthor) -> Result<Author, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::post((MangaDex::Api, Endpoint::Author))
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .json(&author)
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Data<Author>>().await
-    }
-
-    pub async fn get_author<M>(&mut self, id: impl std::fmt::Display, includes: impl Optional<Vec<AuthorInclude>, M>) -> Result<Author, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::get((MangaDex::Api, Endpoint::Author))
-            .join(id.to_string())
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .param_opt("includes", includes.optional())
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Data<Author>>().await
-    }
-
-    pub async fn update_author(&mut self, id: impl std::fmt::Display, author: UpdateAuthor) -> Result<Author, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::put((MangaDex::Api, Endpoint::Author))
-            .join(id.to_string())
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .json(&author)
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Data<Author>>().await
-    }
-
-    pub async fn delete_author(&mut self, id: impl std::fmt::Display) -> Result<(), Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::delete((MangaDex::Api, Endpoint::Author))
-            .join(id.to_string())
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .send()
-            .await?;
-
-        res.manga_dex_response::<()>().await
-    }
-}
-
-// ---[ Chapter Endpoints ]---
-impl Client {
     /// Can use this endpoint to solve captchas explicitly.
     ///
     /// Otherwise adding `X-Captcha-Result` to the client headers and when it is sent with a request
@@ -453,201 +234,5 @@ impl Client {
             .await?;
 
         res.manga_dex_response::<()>().await
-    }
-}
-
-// ---[ Chapter Endpoints ]---
-impl Client {
-    pub async fn list_chapters<M>(&mut self, filters: impl Optional<ChapterFilter, M>) -> Result<Paginated<Vec<Chapter>>, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::get((MangaDex::Api, Endpoint::Chapter))
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .params_opt(filters.optional())
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Paginated<Vec<Chapter>>>().await
-    }
-
-    pub async fn get_chapter(&mut self, id: impl std::fmt::Display) -> Result<Chapter, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::get((MangaDex::Api, Endpoint::Chapter))
-            .join(id.to_string())
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Data<Chapter>>().await
-    }
-
-    pub async fn update_chapter(
-        &mut self,
-        id: impl std::fmt::Display,
-        chapter: UpdateChapter,
-    ) -> Result<Chapter, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::put((MangaDex::Api, Endpoint::Chapter))
-            .join(id.to_string())
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .json(&chapter)
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Data<Chapter>>().await
-    }
-
-    pub async fn delete_chapter(
-        &mut self,
-        id: impl std::fmt::Display,
-    ) -> Result<(), Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::delete((MangaDex::Api, Endpoint::Chapter))
-            .join(id.to_string())
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .send()
-            .await?;
-
-        res.manga_dex_response::<()>().await
-    }
-}
-
-// ---[ Cover Endpoints ]---
-impl Client {
-    pub async fn list_covers<M>(&mut self, filter: impl Optional<CoverArtFilter, M>) -> Result<Paginated<Vec<Cover>>, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::get((MangaDex::Api, Endpoint::Cover))
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .params_opt(filter.optional())
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Paginated<Vec<Cover>>>().await
-    }
-
-    pub async fn upload_cover(&mut self, id: impl std::fmt::Display, cover: UploadCover) -> Result<Cover, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::post((MangaDex::Api, Endpoint::Cover))
-            .join(id.to_string())
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .multipart(cover.into())
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Data<Cover>>().await
-    }
-
-    pub async fn get_cover<M>(&mut self, id: impl std::fmt::Display, includes: impl Optional<Vec<CoverInclude>, M>) -> Result<Cover, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::get((MangaDex::Api, Endpoint::Cover))
-            .join(id.to_string())
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .param_opt("includes", includes.optional())
-            .send()
-            .await?;
-
-        res.manga_dex_response::<Data<Cover>>().await
-    }
-
-    pub async fn retrieve_cover<M>(
-        &mut self,
-        manga_id: impl std::fmt::Display,
-        file_name: impl std::fmt::Display,
-        size: impl Optional<CoverSize, M>
-    ) -> Result<DataStream, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let file_name = if let Some(size) = size.optional() {
-            format!("{file_name}.{size}.jpg")
-        } else {
-            file_name.to_string()
-        };
-
-        let res = Request::get((MangaDex::Uploads, "covers"))
-            .join(manga_id.to_string())
-            .join(file_name)
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .send()
-            .await?;
-
-        ResponseToError::<()>::stream(res)
-    }
-
-    pub async fn edit_cover(&mut self, id: impl std::fmt::Display, cover: EditCover) -> Result<Cover, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::put((MangaDex::Api, Endpoint::Cover))
-            .join(id.to_string())
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .json(&cover)
-            .send()
-        .await?;
-
-        res.manga_dex_response::<Data<Cover>>().await
-    }
-
-    pub async fn delete_cover(&mut self, id: impl std::fmt::Display) -> Result<(), Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::delete((MangaDex::Api, Endpoint::Cover))
-            .join(id.to_string())
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .send()
-        .await?;
-
-        res.manga_dex_response::<()>().await
-    }
-}
-
-// ---[ Manga Endpoints ]---
-impl Client {
-    pub async fn list_manga<M>(&mut self, filter: impl Optional<MangaFilter, M>) -> Result<Paginated<Vec<Manga>>, Error> {
-        if self.oauth().expired()? {
-            self.oauth.refresh().await?;
-        }
-
-        let res = Request::get((MangaDex::Api, Endpoint::Manga))
-            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
-            .params_opt(filter.optional())
-            .send()
-        .await?;
-
-        res.manga_dex_response::<Paginated<Vec<Manga>>>().await
     }
 }

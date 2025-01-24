@@ -1,7 +1,6 @@
 use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
-use strum_macros::Display as _;
 
 use crate::client::{request::Param, ExtendParams};
 
@@ -281,16 +280,17 @@ impl ExtendParams for ChapterFilter {
 #[derive(Default, Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChapterAttributes {
-    pub title: String,
+    pub title: Option<String>,
     pub volume: Option<String>,
     pub chapter: Option<String>,
-    /// Count of readable images for this chapter
-    pub pages: usize,
-    pub translated_language: String,
-    pub uploader: Option<String>,
     /// Denotes a chapter that links to an external source
     pub external_url: Option<String>,
+    /// Count of readable images for this chapter
+    pub pages: usize,
     pub version: usize,
+
+    pub translated_language: Option<String>,
+    pub uploader: Option<String>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
     pub published_at: Option<String>,

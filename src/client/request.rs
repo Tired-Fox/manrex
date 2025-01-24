@@ -1,7 +1,7 @@
-use std::{collections::BTreeMap, path::{Path, PathBuf}};
+use std::{collections::{BTreeMap, HashSet}, path::{Path, PathBuf}};
 
 use crate::Error;
-use reqwest::{header::{HeaderMap, HeaderValue, IntoHeaderName, CONTENT_TYPE}, multipart, Body, Client, Method};
+use reqwest::{header::{HeaderMap, HeaderValue, IntoHeaderName}, multipart, Body, Client, Method};
 
 #[derive(Debug, Clone, strum::EnumIs, PartialEq)]
 pub enum Param {
@@ -37,6 +37,11 @@ impl<'a> From<std::borrow::Cow<'a, str>> for Param {
 
 impl<S: std::fmt::Display> From<Vec<S>> for Param {
     fn from(value: Vec<S>) -> Self {
+        Self::Array(value.into_iter().map(|v| v.to_string()).collect())
+    }
+}
+impl<S: std::fmt::Display> From<HashSet<S>> for Param {
+    fn from(value: HashSet<S>) -> Self {
         Self::Array(value.into_iter().map(|v| v.to_string()).collect())
     }
 }
