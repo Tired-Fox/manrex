@@ -2,13 +2,16 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::client::{request::Param, ExtendParams};
+use crate::{
+    client::{request::OneOrMany, ExtendParams},
+    uuid::{ChapterId, GroupId, MangaId, UserId},
+};
 
 use super::{ContentRating, Order, Relationship};
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, strum::Display)]
 #[serde(rename_all = "snake_case")]
-#[strum(serialize_all="snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum ChapterInclude {
     Manga,
     ScanlationGroup,
@@ -17,28 +20,28 @@ pub enum ChapterInclude {
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct ChapterFilter {
-    limit: Option<usize>,
-    offset: Option<usize>,
-    ids: Vec<String>,
-    title: Option<String>,
-    groups: Vec<String>,
-    uploader: Option<Param>,
-    manga: Option<String>,
-    volumes: Vec<String>,
-    chapters: Vec<String>,
-    translated_languages: Vec<String>,
-    original_languages: Vec<String>,
-    excluded_original_languages: Vec<String>,
-    content_ratings: Vec<ContentRating>,
-    exclude_groups: Vec<String>,
-    exclude_uploaders: Vec<String>,
-    include_future_updates: Option<bool>,
-    include_future_published_at: Option<bool>,
-    include_external_url: Option<bool>,
-    created_at_since: Option<String>,
-    updated_at_since: Option<String>,
-    order: BTreeMap<String, Order>,
-    includes: Vec<ChapterInclude>,
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
+    pub ids: Vec<ChapterId>,
+    pub title: Option<String>,
+    pub groups: Vec<GroupId>,
+    pub uploader: Option<OneOrMany<UserId>>,
+    pub manga: Option<MangaId>,
+    pub volumes: Vec<String>,
+    pub chapters: Option<OneOrMany<ChapterId>>,
+    pub translated_languages: Vec<String>,
+    pub original_languages: Vec<String>,
+    pub excluded_original_languages: Vec<String>,
+    pub content_ratings: Vec<ContentRating>,
+    pub exclude_groups: Vec<String>,
+    pub exclude_uploaders: Vec<String>,
+    pub include_future_updates: Option<bool>,
+    pub include_future_published_at: Option<bool>,
+    pub include_external_url: Option<bool>,
+    pub created_at_since: Option<String>,
+    pub updated_at_since: Option<String>,
+    pub order: BTreeMap<String, Order>,
+    pub includes: Vec<ChapterInclude>,
 }
 impl ChapterFilter {
     pub fn limit(mut self, limit: usize) -> Self {
@@ -49,33 +52,24 @@ impl ChapterFilter {
         self.offset = Some(offset);
         self
     }
-    pub fn id(mut self, id: impl std::fmt::Display) -> Self {
-        self.ids.push(id.to_string());
-        self
-    }
-    pub fn ids<S: std::fmt::Display>(mut self, ids: impl IntoIterator<Item = S>) -> Self {
-        self.ids.extend(ids.into_iter().map(|v| v.to_string()));
+    pub fn ids<C: Into<ChapterId>>(mut self, ids: impl IntoIterator<Item = C>) -> Self {
+        self.ids = ids.into_iter().map(|v| v.into()).collect();
         self
     }
     pub fn title(mut self, title: impl std::fmt::Display) -> Self {
         self.title = Some(title.to_string());
         self
     }
-    pub fn group(mut self, group: impl std::fmt::Display) -> Self {
-        self.groups.push(group.to_string());
+    pub fn group<G: Into<GroupId>>(mut self, groups: impl IntoIterator<Item = G>) -> Self {
+        self.groups = groups.into_iter().map(|v| v.into()).collect();
         self
     }
-    pub fn groups<S: std::fmt::Display>(mut self, groups: impl IntoIterator<Item = S>) -> Self {
-        self.groups
-            .extend(groups.into_iter().map(|v| v.to_string()));
-        self
-    }
-    pub fn uploader(mut self, uploader: impl Into<Param>) -> Self {
+    pub fn uploader(mut self, uploader: impl Into<OneOrMany<UserId>>) -> Self {
         self.uploader = Some(uploader.into());
         self
     }
-    pub fn manga(mut self, manga: impl std::fmt::Display) -> Self {
-        self.manga = Some(manga.to_string());
+    pub fn manga(mut self, manga: impl Into<MangaId>) -> Self {
+        self.manga = Some(manga.into());
         self
     }
     pub fn volume(mut self, volume: impl std::fmt::Display) -> Self {
@@ -87,13 +81,8 @@ impl ChapterFilter {
             .extend(volumes.into_iter().map(|v| v.to_string()));
         self
     }
-    pub fn chapter(mut self, chapter: impl std::fmt::Display) -> Self {
-        self.chapters.push(chapter.to_string());
-        self
-    }
-    pub fn chapters<S: std::fmt::Display>(mut self, chapters: impl IntoIterator<Item = S>) -> Self {
-        self.chapters
-            .extend(chapters.into_iter().map(|v| v.to_string()));
+    pub fn chapters(mut self, chapters: impl Into<OneOrMany<ChapterId>>) -> Self {
+        self.chapters = Some(chapters.into());
         self
     }
     pub fn translated_language(mut self, translated_language: impl std::fmt::Display) -> Self {
@@ -233,9 +222,7 @@ impl ExtendParams for ChapterFilter {
         if !self.volumes.is_empty() {
             request.add_param("volumes", self.volumes);
         }
-        if !self.chapters.is_empty() {
-            request.add_param("chapters", self.chapters);
-        }
+        request.add_param_opt("chapter", self.chapters);
         if !self.translated_languages.is_empty() {
             request.add_param("translatedLanguages", self.translated_languages);
         }
@@ -243,7 +230,10 @@ impl ExtendParams for ChapterFilter {
             request.add_param("originalLanguages", self.original_languages);
         }
         if !self.excluded_original_languages.is_empty() {
-            request.add_param("excludedOriginalLanguages", self.excluded_original_languages);
+            request.add_param(
+                "excludedOriginalLanguages",
+                self.excluded_original_languages,
+            );
         }
         if !self.content_ratings.is_empty() {
             request.add_param("contentRatings", self.content_ratings);
@@ -255,13 +245,26 @@ impl ExtendParams for ChapterFilter {
             request.add_param("excludeUploaders", self.exclude_uploaders);
         }
         if let Some(include_future_updates) = self.include_future_updates {
-            request.add_param("includeFutureUpdates", if include_future_updates { "1" } else { "0" });
+            request.add_param(
+                "includeFutureUpdates",
+                if include_future_updates { "1" } else { "0" },
+            );
         }
         if let Some(include_future_published_at) = self.include_future_published_at {
-            request.add_param("includeFuturePublishedAt", if include_future_published_at { "1" } else { "0" });
+            request.add_param(
+                "includeFuturePublishedAt",
+                if include_future_published_at {
+                    "1"
+                } else {
+                    "0"
+                },
+            );
         }
         if let Some(include_external_url) = self.include_external_url {
-            request.add_param("includeExternalUrl", if include_external_url { "1" } else { "0" });
+            request.add_param(
+                "includeExternalUrl",
+                if include_external_url { "1" } else { "0" },
+            );
         }
 
         request.add_param_opt("createdAtSince", self.created_at_since);
@@ -277,7 +280,7 @@ impl ExtendParams for ChapterFilter {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChapterAttributes {
     pub title: Option<String>,
@@ -297,10 +300,10 @@ pub struct ChapterAttributes {
     pub readable_at: Option<String>,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Chapter {
-    pub id: String,
+    pub id: ChapterId,
     pub attributes: ChapterAttributes,
     #[serde(default)]
     pub relationships: Vec<Relationship>,
@@ -310,15 +313,15 @@ pub struct Chapter {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateChapter {
     pub version: usize,
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub volume: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub chapter: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub translated_language: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub groups: Option<Vec<String>>,
 }
 
@@ -348,7 +351,7 @@ impl UpdateChapter {
         self
     }
 
-    pub fn groups<S: std::fmt::Display>(mut self, groups: impl IntoIterator<Item=S>) -> Self {
+    pub fn groups<S: std::fmt::Display>(mut self, groups: impl IntoIterator<Item = S>) -> Self {
         self.groups = Some(groups.into_iter().map(|v| v.to_string()).collect());
         self
     }

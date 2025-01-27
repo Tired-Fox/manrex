@@ -7,6 +7,7 @@ use crate::{
     client::{Endpoint, MangaDex, Optional, Request, CLIENT_NAME, CLIENT_VERSION},
     error::ResponseToError,
     model::{chapter::Chapter, manga::*, Data, Paginated, Relation, Status},
+    uuid::{GroupId, MangaId},
     Client, Error,
 };
 
@@ -35,16 +36,16 @@ impl Client {
 
     pub async fn get_manga_volumes_and_chapters<M1, M2>(
         &mut self,
-        id: impl std::fmt::Display,
+        id: impl Into<MangaId>,
         translated_languages: impl Optional<Vec<String>, M1>,
-        groups: impl Optional<Vec<String>, M2>,
+        groups: impl Optional<Vec<GroupId>, M2>,
     ) -> Result<BTreeMap<String, Volume>, Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
         let res = Request::get((MangaDex::Api, Endpoint::Manga))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .join("aggregate")
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
@@ -56,12 +57,13 @@ impl Client {
             .send()
             .await?;
 
-        res.manga_dex_response::<Volumes<BTreeMap<String, Volume>>>().await
+        res.manga_dex_response::<Volumes<BTreeMap<String, Volume>>>()
+            .await
     }
 
     pub async fn get_manga<M>(
         &mut self,
-        id: impl std::fmt::Display,
+        id: impl Into<MangaId>,
         includes: impl Optional<Vec<MangaInclude>, M>,
     ) -> Result<Manga, Error> {
         if self.oauth().expired()? {
@@ -69,7 +71,7 @@ impl Client {
         }
 
         let res = Request::get((MangaDex::Api, Endpoint::Manga))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
                 AUTHORIZATION,
@@ -100,13 +102,13 @@ impl Client {
         res.manga_dex_response::<Data<Manga>>().await
     }
 
-    pub async fn follow_manga(&mut self, id: impl std::fmt::Display) -> Result<(), Error> {
+    pub async fn follow_manga(&mut self, id: impl Into<MangaId>) -> Result<(), Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
         let res = Request::post((MangaDex::Api, Endpoint::Manga))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .join("follow")
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
@@ -121,7 +123,7 @@ impl Client {
 
     pub async fn update_manga(
         &mut self,
-        id: impl std::fmt::Display,
+        id: impl Into<MangaId>,
         manga: UpdateManga,
     ) -> Result<Manga, Error> {
         if self.oauth().expired()? {
@@ -129,7 +131,7 @@ impl Client {
         }
 
         let res = Request::put((MangaDex::Api, Endpoint::Manga))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
                 AUTHORIZATION,
@@ -142,13 +144,13 @@ impl Client {
         res.manga_dex_response::<Data<Manga>>().await
     }
 
-    pub async fn delete_manga(&mut self, id: impl std::fmt::Display) -> Result<(), Error> {
+    pub async fn delete_manga(&mut self, id: impl Into<MangaId>) -> Result<(), Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
         let res = Request::delete((MangaDex::Api, Endpoint::Manga))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
                 AUTHORIZATION,
@@ -160,13 +162,13 @@ impl Client {
         res.manga_dex_response::<()>().await
     }
 
-    pub async fn unfollow_manga(&mut self, id: impl std::fmt::Display) -> Result<(), Error> {
+    pub async fn unfollow_manga(&mut self, id: impl Into<MangaId>) -> Result<(), Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
         let res = Request::delete((MangaDex::Api, Endpoint::Manga))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .join("follow")
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
@@ -181,7 +183,7 @@ impl Client {
 
     pub async fn get_manga_feed<M>(
         &mut self,
-        id: impl std::fmt::Display,
+        id: impl Into<MangaId>,
         filter: impl Optional<FeedFilter, M>,
     ) -> Result<Paginated<Vec<Chapter>>, Error> {
         if self.oauth().expired()? {
@@ -189,7 +191,7 @@ impl Client {
         }
 
         let res = Request::get((MangaDex::Api, Endpoint::Manga))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .join("feed")
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
@@ -262,19 +264,20 @@ impl Client {
             .send()
             .await?;
 
-        res.manga_dex_response::<Statuses<BTreeMap<String, Status>>>().await
+        res.manga_dex_response::<Statuses<BTreeMap<String, Status>>>()
+            .await
     }
 
     pub async fn get_manga_reading_status(
         &mut self,
-        id: impl std::fmt::Display,
+        id: impl Into<MangaId>,
     ) -> Result<Status, Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
         let res = Request::get((MangaDex::Api, Endpoint::Manga))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .join("status")
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
@@ -289,7 +292,7 @@ impl Client {
 
     pub async fn update_manga_reading_status<M>(
         &mut self,
-        id: impl std::fmt::Display,
+        id: impl Into<MangaId>,
         status: impl Optional<Status, M>,
     ) -> Result<Status, Error> {
         if self.oauth().expired()? {
@@ -297,7 +300,7 @@ impl Client {
         }
 
         let res = Request::post((MangaDex::Api, Endpoint::Manga))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .join("status")
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
@@ -315,7 +318,7 @@ impl Client {
 
     pub async fn get_specific_manga_draft<M>(
         &mut self,
-        id: impl std::fmt::Display,
+        id: impl Into<MangaId>,
         includes: impl Optional<Vec<MangaInclude>, M>,
     ) -> Result<Status, Error> {
         if self.oauth().expired()? {
@@ -324,7 +327,7 @@ impl Client {
 
         let res = Request::get((MangaDex::Api, Endpoint::Manga))
             .join("draft")
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
                 AUTHORIZATION,
@@ -339,7 +342,7 @@ impl Client {
 
     pub async fn submit_manga_draft<M>(
         &mut self,
-        id: impl std::fmt::Display,
+        id: impl Into<MangaId>,
         version: usize,
     ) -> Result<Manga, Error> {
         if self.oauth().expired()? {
@@ -348,7 +351,7 @@ impl Client {
 
         let res = Request::post((MangaDex::Api, Endpoint::Manga))
             .join("draft")
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .join("commit")
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
@@ -388,7 +391,7 @@ impl Client {
 
     pub async fn get_manga_relation_list<M>(
         &mut self,
-        id: impl std::fmt::Display,
+        id: impl Into<MangaId>,
         includes: impl Optional<Vec<MangaInclude>, M>,
     ) -> Result<Paginated<Vec<MangaRelation>>, Error> {
         if self.oauth().expired()? {
@@ -396,7 +399,7 @@ impl Client {
         }
 
         let res = Request::get((MangaDex::Api, Endpoint::Manga))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .join("relation")
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
@@ -413,8 +416,8 @@ impl Client {
 
     pub async fn create_manga_relation(
         &mut self,
-        id: impl std::fmt::Display,
-        target: impl std::fmt::Display,
+        id: impl Into<MangaId>,
+        target: impl Into<MangaId>,
         relation: Relation,
     ) -> Result<MangaRelation, Error> {
         if self.oauth().expired()? {
@@ -422,7 +425,7 @@ impl Client {
         }
 
         let res = Request::post((MangaDex::Api, Endpoint::Manga))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .join("relation")
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
@@ -430,7 +433,7 @@ impl Client {
                 format!("Bearer {}", self.oauth().access_token()),
             )
             .json(&json!({
-                "targetManga": target.to_string(),
+                "targetManga": target.into().as_ref(),
                 "relation": relation,
             }))
             .send()
@@ -441,17 +444,17 @@ impl Client {
 
     pub async fn delete_manga_relation(
         &mut self,
-        id: impl std::fmt::Display,
-        target: impl std::fmt::Display,
+        id: impl Into<MangaId>,
+        target: impl Into<MangaId>,
     ) -> Result<(), Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
         let res = Request::post((MangaDex::Api, Endpoint::Manga))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .join("relation")
-            .join(target.to_string())
+            .join(target.into().as_ref())
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
                 AUTHORIZATION,

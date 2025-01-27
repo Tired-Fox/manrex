@@ -1,6 +1,10 @@
 use std::collections::BTreeMap;
 
-use crate::client::ExtendParams;
+use crate::{
+    client::ExtendParams,
+    uuid::{ReasonId, ReportId},
+    Uuid,
+};
 
 use super::{Category, Order, Relationship};
 
@@ -18,13 +22,15 @@ pub struct ReportReasonAttributes {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReportReason {
-    pub id: String,
+    pub id: ReasonId,
     pub attributes: ReportReasonAttributes,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
-#[serde(rename_all="snake_case")]
-#[strum(serialize_all="snake_case")]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display,
+)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum ReportStatus {
     Waiting,
     Accepted,
@@ -36,7 +42,7 @@ pub enum ReportStatus {
 #[serde(rename_all = "camelCase")]
 pub struct ReportAttributes {
     pub details: String,
-    pub object_id: String,
+    pub object_id: Uuid,
     pub status: ReportStatus,
     pub created_at: String,
 }
@@ -44,7 +50,7 @@ pub struct ReportAttributes {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Report {
-    pub id: String,
+    pub id: ReportId,
     pub attributes: ReportReasonAttributes,
     pub relationships: Vec<Relationship>,
 }
@@ -54,20 +60,20 @@ pub struct Report {
 pub struct CreateReport {
     pub category: Category,
     pub reason: String,
-    pub object_id: String,
-    pub details: String
+    pub object_id: Uuid,
+    pub details: String,
 }
 impl CreateReport {
     pub fn new(
         category: Category,
         reason: impl std::fmt::Display,
-        object_id: impl std::fmt::Display,
+        object_id: impl Into<Uuid>,
         details: impl std::fmt::Display,
     ) -> Self {
         Self {
             category,
             reason: reason.to_string(),
-            object_id: object_id.to_string(),
+            object_id: object_id.into(),
             details: details.to_string(),
         }
     }
@@ -75,7 +81,7 @@ impl CreateReport {
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, strum::Display)]
 #[serde(rename_all = "snake_case")]
-#[strum(serialize_all="snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum ReportInclude {
     Reason,
     User,
@@ -83,15 +89,15 @@ pub enum ReportInclude {
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct ReportFilter {
-    limit: Option<usize>,
-    offset: Option<usize>,
-    category: Option<Category>,
-    reason_id: Option<String>,
-    object_id: Option<String>,
-    status: Option<ReportStatus>,
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
+    pub category: Option<Category>,
+    pub reason_id: Option<ReasonId>,
+    pub object_id: Option<Uuid>,
+    pub status: Option<ReportStatus>,
 
-    order: BTreeMap<String, Order>,
-    includes: Vec<ReportInclude>,
+    pub order: BTreeMap<String, Order>,
+    pub includes: Vec<ReportInclude>,
 }
 
 impl ReportFilter {
@@ -115,22 +121,28 @@ impl ReportFilter {
         self
     }
 
-    pub fn reason_id<S: std::fmt::Display>(mut self, state: S) -> Self {
-        self.reason_id = Some(state.to_string());
+    pub fn reason_id<R: Into<ReasonId>>(mut self, state: R) -> Self {
+        self.reason_id = Some(state.into());
         self
     }
 
-    pub fn object_id<S: std::fmt::Display>(mut self, state: S) -> Self {
-        self.object_id = Some(state.to_string());
+    pub fn object_id<U: Into<Uuid>>(mut self, state: U) -> Self {
+        self.object_id = Some(state.into());
         self
     }
 
-    pub fn order<S: std::fmt::Display>(mut self, includes: impl IntoIterator<Item=(S, Order)>) -> Self {
-        self.order = includes.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+    pub fn order<S: std::fmt::Display>(
+        mut self,
+        includes: impl IntoIterator<Item = (S, Order)>,
+    ) -> Self {
+        self.order = includes
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v))
+            .collect();
         self
     }
 
-    pub fn include(mut self, includes: impl IntoIterator<Item=ReportInclude>) -> Self {
+    pub fn include(mut self, includes: impl IntoIterator<Item = ReportInclude>) -> Self {
         self.includes.extend(includes);
         self
     }

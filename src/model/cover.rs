@@ -3,13 +3,17 @@ use std::{borrow::Cow, collections::BTreeMap, path::Path};
 use reqwest::multipart;
 use serde::{Deserialize, Serialize};
 
-use crate::{client::{ExtendParams, Optional}, Error};
+use crate::{
+    client::{ExtendParams, Optional},
+    uuid::{CoverId, MangaId, UserId},
+    Error,
+};
 
 use super::{Order, Relationship};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, strum::Display)]
 #[serde(rename_all = "snake_case")]
-#[strum(serialize_all="snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum CoverInclude {
     Manga,
     User,
@@ -18,14 +22,14 @@ pub enum CoverInclude {
 #[derive(Default, Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CoverArtFilter {
-    limit: Option<usize>,
-    offset: Option<usize>,
-    manga: Vec<String>,
-    ids: Vec<String>,
-    uploaders: Vec<String>,
-    locales: Vec<String>,
-    order: BTreeMap<String, Order>,
-    includes: Vec<CoverInclude>
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
+    pub manga: Vec<MangaId>,
+    pub ids: Vec<CoverId>,
+    pub uploaders: Vec<UserId>,
+    pub locales: Vec<String>,
+    pub order: BTreeMap<String, Order>,
+    pub includes: Vec<CoverInclude>,
 }
 
 impl CoverArtFilter {
@@ -39,37 +43,32 @@ impl CoverArtFilter {
         self
     }
 
-    pub fn manga<S: std::fmt::Display>(mut self, s: impl IntoIterator<Item=S>) -> Self {
-        self.manga.extend(s.into_iter().map(|v| v.to_string()));
+    pub fn manga<M: Into<MangaId>>(mut self, s: impl IntoIterator<Item = M>) -> Self {
+        self.manga = s.into_iter().map(|v| v.into()).collect();
         self
     }
 
-    pub fn ids<S: std::fmt::Display>(mut self, s: impl IntoIterator<Item=S>) -> Self {
-        self.manga.extend(s.into_iter().map(|v| v.to_string()));
+    pub fn ids<C: Into<CoverId>>(mut self, s: impl IntoIterator<Item = C>) -> Self {
+        self.ids = s.into_iter().map(|v| v.into()).collect();
         self
     }
 
-    pub fn uploaders<S: std::fmt::Display>(mut self, s: impl IntoIterator<Item=S>) -> Self {
-        self.manga.extend(s.into_iter().map(|v| v.to_string()));
+    pub fn uploaders<U: Into<UserId>>(mut self, s: impl IntoIterator<Item = U>) -> Self {
+        self.uploaders = s.into_iter().map(|v| v.into()).collect();
         self
     }
 
-    pub fn locales<S: std::fmt::Display>(mut self, s: impl IntoIterator<Item=S>) -> Self {
-        self.manga.extend(s.into_iter().map(|v| v.to_string()));
+    pub fn locales<S: std::fmt::Display>(mut self, s: impl IntoIterator<Item = S>) -> Self {
+        self.locales.extend(s.into_iter().map(|v| v.to_string()));
         self
     }
 
-    pub fn order<S: std::fmt::Display>(mut self, s: impl IntoIterator<Item=(S, Order)>) -> Self {
-        self.order.extend(s.into_iter().map(|(k, v)| (k.to_string(), v)));
+    pub fn order<S: std::fmt::Display>(mut self, s: impl IntoIterator<Item = (S, Order)>) -> Self {
+        self.order = s.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
         self
     }
 
-    pub fn include(mut self, include: CoverInclude) -> Self {
-        self.includes.push(include);
-        self
-    }
-
-    pub fn includes(mut self, s: impl IntoIterator<Item=CoverInclude>) -> Self {
+    pub fn includes(mut self, s: impl IntoIterator<Item = CoverInclude>) -> Self {
         self.includes.extend(s);
         self
     }
@@ -100,9 +99,9 @@ impl ExtendParams for CoverArtFilter {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct CoverAttributes  {
+pub struct CoverAttributes {
     pub volume: Option<String>,
     pub file_name: String,
     pub description: Option<String>,
@@ -112,23 +111,25 @@ pub struct CoverAttributes  {
     pub updated_at: String,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Cover {
-    pub id: String,
+    pub id: CoverId,
     pub attributes: CoverAttributes,
-    pub relationships: Vec<Relationship>
+    pub relationships: Vec<Relationship>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display)]
-#[serde(rename_all="snake_case")]
-#[strum(serialize_all="snake_case")]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize, strum::Display,
+)]
+#[serde(rename_all = "snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum CoverSize {
     /// 512 pixels wide
-    #[strum(to_string="512")]
+    #[strum(to_string = "512")]
     Large,
     /// 256 pixels wide
-    #[strum(to_string="256")]
+    #[strum(to_string = "256")]
     Small,
 }
 
@@ -164,13 +165,13 @@ impl UploadCover {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditCover {
-    volume: Option<String>,
-    version: usize,
+    pub volume: Option<String>,
+    pub version: usize,
 
-    #[serde(skip_serializing_if="Option::is_none")]
-    description: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    locale: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub locale: Option<String>,
 }
 
 impl Default for EditCover {

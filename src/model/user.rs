@@ -2,17 +2,17 @@ use std::collections::BTreeMap;
 
 use serde::Deserialize;
 
-use crate::client::ExtendParams;
+use crate::{client::ExtendParams, uuid::UserId};
 
 use super::{Order, Relationship};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct UserFilter {
-    limit: Option<usize>,
-    offset: Option<usize>,
-    ids: Vec<String>,
-    username: Option<String>,
-    order: BTreeMap<String, Order>,
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
+    pub ids: Vec<UserId>,
+    pub username: Option<String>,
+    pub order: BTreeMap<String, Order>,
 }
 
 impl UserFilter {
@@ -31,13 +31,17 @@ impl UserFilter {
         self
     }
 
-    pub fn ids<S: std::fmt::Display>(mut self, ids: impl IntoIterator<Item=S>) -> Self {
-        self.ids.extend(ids.into_iter().map(|v| v.to_string()));
+    pub fn ids<U: Into<UserId>>(mut self, ids: impl IntoIterator<Item = U>) -> Self {
+        self.ids = ids.into_iter().map(|v| v.into()).collect();
         self
     }
 
-    pub fn order<S: std::fmt::Display>(mut self, orders: impl IntoIterator<Item=(S, Order)>) -> Self {
-        self.order.extend(orders.into_iter().map(|(k, v)| (k.to_string(), v)));
+    pub fn order<S: std::fmt::Display>(
+        mut self,
+        orders: impl IntoIterator<Item = (S, Order)>,
+    ) -> Self {
+        self.order
+            .extend(orders.into_iter().map(|(k, v)| (k.to_string(), v)));
         self
     }
 }
@@ -60,15 +64,15 @@ impl ExtendParams for UserFilter {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserAttributes {
-    username: String,
-    roles: Vec<String>,
-    version: usize,
+    pub username: String,
+    pub roles: Vec<String>,
+    pub version: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
-    id: String,
-    attributes: UserAttributes,
-    relationships: Vec<Relationship>,
+    pub id: UserId,
+    pub attributes: UserAttributes,
+    pub relationships: Vec<Relationship>,
 }

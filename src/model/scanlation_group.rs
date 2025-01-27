@@ -2,46 +2,49 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::client::ExtendParams;
+use crate::{
+    client::ExtendParams,
+    uuid::{GroupId, UserId},
+};
 
 use super::{Order, Relationship};
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanlationGroupAttributes {
-    name: String,
-    alt_names: Vec<BTreeMap<String, String>>,
-    website: Option<String>,
-    irc_server: Option<String>,
-    irc_channel: Option<String>,
-    discord: Option<String>,
-    contact_email: Option<String>,
-    description: Option<String>,
-    twitter: Option<String>,
-    manga_updates: Option<String>,
-    focused_language: Option<String>,
-    locked: bool,
-    official: bool,
-    verified: bool,
-    inactive: bool,
-    ex_licensed: bool,
-    publish_delay: Option<String>,
-    version: usize,
-    created_at: Option<String>,
-    updated_at: Option<String>,
+    pub name: String,
+    pub alt_names: Vec<BTreeMap<String, String>>,
+    pub website: Option<String>,
+    pub irc_server: Option<String>,
+    pub irc_channel: Option<String>,
+    pub discord: Option<String>,
+    pub contact_email: Option<String>,
+    pub description: Option<String>,
+    pub twitter: Option<String>,
+    pub manga_updates: Option<String>,
+    pub focused_language: Option<String>,
+    pub locked: bool,
+    pub official: bool,
+    pub verified: bool,
+    pub inactive: bool,
+    pub ex_licensed: bool,
+    pub publish_delay: Option<String>,
+    pub version: usize,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanlationGroup {
-    pub id: String,
+    pub id: GroupId,
     pub attributes: ScanlationGroupAttributes,
     pub relationships: Vec<Relationship>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, strum::Display)]
 #[serde(rename_all = "snake_case")]
-#[strum(serialize_all="snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum ScanlationGroupInclude {
     Leader,
     Member,
@@ -49,15 +52,13 @@ pub enum ScanlationGroupInclude {
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct ScanlationGroupFilter {
-    limit: Option<usize>,
-    offset: Option<usize>,
-
-    ids: Vec<String>,
-    name: Option<String>,
-    focused_language: Option<String>,
-
-    order: BTreeMap<String, Order>,
-    includes: Vec<ScanlationGroupInclude>,
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
+    pub ids: Vec<GroupId>,
+    pub name: Option<String>,
+    pub focused_language: Option<String>,
+    pub order: BTreeMap<String, Order>,
+    pub includes: Vec<ScanlationGroupInclude>,
 }
 
 impl ScanlationGroupFilter {
@@ -71,8 +72,8 @@ impl ScanlationGroupFilter {
         self
     }
 
-    pub fn ids<S: std::fmt::Display>(mut self, s: impl IntoIterator<Item=S>) -> Self {
-        self.ids = s.into_iter().map(|v| v.to_string()).collect();
+    pub fn ids<G: Into<GroupId>>(mut self, s: impl IntoIterator<Item = G>) -> Self {
+        self.ids = s.into_iter().map(|v| v.into()).collect();
         self
     }
 
@@ -86,12 +87,18 @@ impl ScanlationGroupFilter {
         self
     }
 
-    pub fn order<S: std::fmt::Display>(mut self, includes: impl IntoIterator<Item=(S, Order)>) -> Self {
-        self.order = includes.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+    pub fn order<S: std::fmt::Display>(
+        mut self,
+        includes: impl IntoIterator<Item = (S, Order)>,
+    ) -> Self {
+        self.order = includes
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v))
+            .collect();
         self
     }
 
-    pub fn include(mut self, includes: impl IntoIterator<Item=ScanlationGroupInclude>) -> Self {
+    pub fn include(mut self, includes: impl IntoIterator<Item = ScanlationGroupInclude>) -> Self {
         self.includes.extend(includes);
         self
     }
@@ -121,28 +128,28 @@ impl ExtendParams for ScanlationGroupFilter {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct CreateScanlationGroup {
-    name: String,
+    pub name: String,
 
-    #[serde(skip_serializing_if="Option::is_none")]
-    website: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    irc_server: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    irc_channel: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    discord: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    contact_email: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    description: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    twitter: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    manga_updates: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    inactive: Option<bool>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    publish_delay: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub website: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub irc_server: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub irc_channel: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub discord: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contact_email: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub twitter: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub manga_updates: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inactive: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publish_delay: Option<String>,
 }
 
 impl CreateScanlationGroup {
@@ -207,41 +214,40 @@ impl CreateScanlationGroup {
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct UpdateScanlationGroup {
-    version: usize,
+    pub version: usize,
 
-    #[serde(skip_serializing_if="Option::is_none")]
-    name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 
-    #[serde(skip_serializing_if="Option::is_none")]
-    leader: Option<String>,
-    #[serde(skip_serializing_if="Vec::is_empty")]
-    members: Vec<String>,
-    #[serde(skip_serializing_if="Vec::is_empty")]
-    focused_languages: Vec<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    locked: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub leader: Option<UserId>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub members: Vec<UserId>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub focused_languages: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub locked: Option<bool>,
 
-    #[serde(skip_serializing_if="Option::is_none")]
-    website: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    irc_server: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    irc_channel: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    discord: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    contact_email: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    description: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    twitter: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    manga_updates: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    inactive: Option<bool>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    publish_delay: Option<String>,
-
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub website: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub irc_server: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub irc_channel: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub discord: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub contact_email: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub twitter: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub manga_updates: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub inactive: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publish_delay: Option<String>,
 }
 
 impl UpdateScanlationGroup {
@@ -313,8 +319,8 @@ impl UpdateScanlationGroup {
         self.name = Some(s.to_string());
         self
     }
-    pub fn leader(mut self, s: impl std::fmt::Display) -> Self {
-        self.leader = Some(s.to_string());
+    pub fn leader(mut self, s: impl Into<UserId>) -> Self {
+        self.leader = Some(s.into());
         self
     }
     pub fn locked(mut self, s: bool) -> Self {
@@ -322,12 +328,15 @@ impl UpdateScanlationGroup {
         self
     }
 
-    pub fn members<S: std::fmt::Display>(mut self, s: impl IntoIterator<Item=S>) -> Self {
-        self.members = s.into_iter().map(|v| v.to_string()).collect();
+    pub fn members<M: Into<UserId>>(mut self, s: impl IntoIterator<Item = M>) -> Self {
+        self.members = s.into_iter().map(|v| v.into()).collect();
         self
     }
 
-    pub fn focused_languages<S: std::fmt::Display>(mut self, s: impl IntoIterator<Item=S>) -> Self {
+    pub fn focused_languages<S: std::fmt::Display>(
+        mut self,
+        s: impl IntoIterator<Item = S>,
+    ) -> Self {
         self.focused_languages = s.into_iter().map(|v| v.to_string()).collect();
         self
     }

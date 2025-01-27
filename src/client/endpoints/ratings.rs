@@ -6,7 +6,8 @@ use serde_json::json;
 use crate::{
     client::{Endpoint, MangaDex, Request, CLIENT_NAME, CLIENT_VERSION},
     error::ResponseToError,
-    model::{rating::Rating, rating::*},
+    model::rating::{Rating, *},
+    uuid::MangaId,
     Client, Error,
 };
 
@@ -14,7 +15,7 @@ use crate::{
 impl Client {
     pub async fn get_your_ratings(
         &mut self,
-        manga: impl std::fmt::Display,
+        manga: impl Into<MangaId>,
     ) -> Result<BTreeMap<String, Rating>, Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
@@ -26,7 +27,7 @@ impl Client {
                 AUTHORIZATION,
                 format!("Bearer {}", self.oauth().access_token()),
             )
-            .param("manga", manga.to_string())
+            .param("manga", manga.into().as_ref())
             .send()
             .await?;
 
@@ -36,7 +37,7 @@ impl Client {
 
     pub async fn create_or_update_rating(
         &mut self,
-        id: impl std::fmt::Display,
+        id: impl Into<MangaId>,
         rating: usize,
     ) -> Result<(), Error> {
         if self.oauth().expired()? {
@@ -44,7 +45,7 @@ impl Client {
         }
 
         let res = Request::post((MangaDex::Api, Endpoint::Rating))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
                 AUTHORIZATION,
@@ -59,13 +60,13 @@ impl Client {
         res.manga_dex_response::<()>().await
     }
 
-    pub async fn delete_rating(&mut self, id: impl std::fmt::Display) -> Result<(), Error> {
+    pub async fn delete_rating(&mut self, id: impl Into<MangaId>) -> Result<(), Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
         let res = Request::delete((MangaDex::Api, Endpoint::Rating))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
                 AUTHORIZATION,

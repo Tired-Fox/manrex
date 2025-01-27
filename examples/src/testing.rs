@@ -1,13 +1,21 @@
 use std::path::PathBuf;
 
 use futures_util::StreamExt;
+use manrex::{
+    auth::{Credentials, OAuth},
+    model::{chapter::ChapterFilter, manga::MangaInclude},
+    Client,
+};
 use spinoff::{spinners, Spinner};
 use tokio::io::AsyncWriteExt;
-use manrex::{auth::{Credentials, OAuth}, model::{chapter::ChapterFilter, manga::MangaInclude}, Client};
 
 #[tokio::main]
 pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let mut spinner = Spinner::new(spinners::Dots, "Checking Authorization", spinoff::Color::Yellow);
+    let mut spinner = Spinner::new(
+        spinners::Dots,
+        "Checking Authorization",
+        spinoff::Color::Yellow,
+    );
 
     let mut auth = OAuth::new(Credentials::from_env()?);
 
@@ -15,13 +23,33 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     //
     // Every other use of the api refreshes this token after it expires
     if !auth.logged_in() {
-        spinner.update(spinners::Dots, "[PRIVATE CLIENT] Logging in as user", spinoff::Color::Yellow);
-        auth.login_with(std::env::var("MANGADEX_USERNAME")?, std::env::var("MANGADEX_PASSWORD")?).await?;
+        spinner.update(
+            spinners::Dots,
+            "[PRIVATE CLIENT] Logging in as user",
+            spinoff::Color::Yellow,
+        );
+
+        // Prompt for username and password to "login" and
+        // authenticate while fetching the token
+
+        let username: String = dialoguer::Input::new()
+            .with_prompt("Enter your MangaDex username:")
+            .interact()?;
+
+        let password: String = dialoguer::Password::new()
+            .with_prompt("Enter your MangaDex password:")
+            .interact()?;
+
+        auth.login_with(
+            //std::env::var("MANGADEX_USERNAME")?,
+            //std::env::var("MANGADEX_PASSWORD")?,
+            username, password,
+        )
+        .await?;
     }
     let mut client = Client::new(auth);
 
     assert!(client.ping().await.is_ok());
-
 
     spinner.update(spinners::Dots, "Fetching Manga", spinoff::Color::Yellow);
 
@@ -43,7 +71,11 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             .truncate(true)
             .create(true)
             .write(true)
-            .open(if let Some("image/jpeg") = mime.as_deref() { base.join("cover.jpg") } else { base.join("cover.png") })
+            .open(if let Some("image/jpeg") = mime.as_deref() {
+                base.join("cover.jpg")
+            } else {
+                base.join("cover.png")
+            })
             .await?;
 
         while let Some(Ok(chunk)) = stream.next().await {
@@ -52,27 +84,51 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
 
     spinner.update(spinners::Dots, "Fetching Chapters", spinoff::Color::Yellow);
-    let chapters = client.list_chapters(ChapterFilter::default().manga(id).limit(50)).await?;
+    let chapters = client
+        .list_chapters(ChapterFilter::default().manga(id).limit(50))
+        .await?;
     spinner.success(&format!("{} chapters found", chapters.data.len()));
 
     if let Some(chapter) = chapters.data.first() {
-        spinner = Spinner::new(spinners::Dots, "Downloading chapter 0", spinoff::Color::Yellow);
+        spinner = Spinner::new(
+            spinners::Dots,
+            "Downloading chapter 0",
+            spinoff::Color::Yellow,
+        );
         let server = client.get_at_home_server(&chapter.id, false).await?;
 
-        let path = base.join(format!("chapter-{}", chapter.attributes.chapter.clone().unwrap_or("0".to_string())));
+        let path = base.join(format!(
+            "chapter-{}",
+            chapter
+                .attributes
+                .chapter
+                .clone()
+                .unwrap_or("0".to_string())
+        ));
         if !path.exists() {
             std::fs::create_dir_all(&path)?;
         }
 
         for (j, image) in server.saver_images().iter().enumerate() {
-            spinner.update(spinners::Dots, format!("Downloading chapter 0 [{j}/{}]", chapter.attributes.pages), spinoff::Color::Yellow);
+            spinner.update(
+                spinners::Dots,
+                format!("Downloading chapter 0 [{j}/{}]", chapter.attributes.pages),
+                spinoff::Color::Yellow,
+            );
             let (mime, mut stream) = image.fetch().await?;
             {
                 let mut file = tokio::fs::OpenOptions::new()
                     .truncate(true)
                     .create(true)
                     .write(true)
-                    .open(path.join(format!("page-{j}.{}", if let Some("image/jpeg") = mime.as_deref() { "jpg" } else { "png" })))
+                    .open(path.join(format!(
+                        "page-{j}.{}",
+                        if let Some("image/jpeg") = mime.as_deref() {
+                            "jpg"
+                        } else {
+                            "png"
+                        }
+                    )))
                     .await?;
 
                 // Stream chunks of bytes from the image response to the file

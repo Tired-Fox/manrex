@@ -2,22 +2,22 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::client::ExtendParams;
+use crate::{client::ExtendParams, uuid::ClientId};
 
 use super::{Order, Relationship};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, strum::Display)]
-#[serde(rename_all="camelCase")]
-#[strum(serialize_all="snake_case")]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "snake_case")]
 pub enum ApiClientState {
     Requested,
     Approved,
     Rejected,
-    Autoapproved
+    Autoapproved,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct ApiClientAttributes {
     pub name: String,
     pub description: Option<String>,
@@ -27,16 +27,16 @@ pub struct ApiClientAttributes {
     pub state: ApiClientState,
     pub created_at: String,
     pub updated_at: String,
-    pub version: usize
+    pub version: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
-#[serde(rename_all="camelCase")]
+#[serde(rename_all = "camelCase")]
 pub struct ApiClient {
-    pub id: String,
+    pub id: ClientId,
     pub attributes: ApiClientAttributes,
     #[serde(default)]
-    pub relationships: Vec<Relationship>
+    pub relationships: Vec<Relationship>,
 }
 
 #[derive(Default, Debug, PartialEq)]
@@ -44,7 +44,7 @@ pub struct ClientFilter {
     pub limit: Option<usize>,
     pub offset: Option<usize>,
     pub state: Option<ApiClientState>,
-    pub orders: BTreeMap<String, Order>
+    pub orders: BTreeMap<String, Order>,
 }
 impl ClientFilter {
     pub fn limit(self, limit: usize) -> Self {
@@ -68,7 +68,7 @@ impl ClientFilter {
         }
     }
 
-    pub fn orders<S: std::fmt::Display>(self, order: impl IntoIterator<Item=(S, Order)>) -> Self {
+    pub fn orders<S: std::fmt::Display>(self, order: impl IntoIterator<Item = (S, Order)>) -> Self {
         Self {
             orders: order.into_iter().map(|(k, v)| (k.to_string(), v)).collect(),
             ..self
@@ -93,8 +93,8 @@ impl ExtendParams for ClientFilter {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, strum::Display)]
-#[serde(rename_all="camelCase")]
-#[strum(serialize_all="snake_case")]
+#[serde(rename_all = "camelCase")]
+#[strum(serialize_all = "snake_case")]
 pub enum ClientInclude {
-    Creator
+    Creator,
 }

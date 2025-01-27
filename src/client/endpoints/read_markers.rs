@@ -7,6 +7,7 @@ use crate::{
     client::{Endpoint, MangaDex, Optional, Request, CLIENT_NAME, CLIENT_VERSION},
     error::ResponseToError,
     model::{rating::*, Data},
+    uuid::{ChapterId, MangaId},
     Client, Error,
 };
 
@@ -14,51 +15,58 @@ use crate::{
 impl Client {
     pub async fn list_read_markers(
         &mut self,
-        manga: impl std::fmt::Display,
-    ) -> Result<Vec<String>, Error> {
+        manga: impl Into<MangaId>,
+    ) -> Result<Vec<ChapterId>, Error> {
+        let id = manga.into();
+
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
         let res = Request::get((MangaDex::Api, Endpoint::Manga))
-            .join(manga.to_string())
+            .join(id.as_ref())
             .join("read")
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
                 AUTHORIZATION,
                 format!("Bearer {}", self.oauth().access_token()),
             )
-            .param("manga", manga.to_string())
+            .param("manga", id.as_ref())
             .send()
             .await?;
 
-        res.manga_dex_response::<Data<Vec<String>>>().await
+        res.manga_dex_response::<Data<Vec<ChapterId>>>().await
     }
 
     pub async fn set_read_markers<M1, M2>(
         &mut self,
-        manga: impl std::fmt::Display,
-        chapters_read: Vec<String>,
+        manga: impl Into<MangaId>,
+        chapters_read: impl IntoIterator<Item = ChapterId>,
         update_history: impl Optional<bool, M1>,
-        chapter_ids_unread: impl Optional<Vec<String>, M1>,
-    ) -> Result<Vec<String>, Error> {
+        chapter_ids_unread: impl Optional<Vec<ChapterId>, M1>,
+    ) -> Result<(), Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
         let mut body = json!({
-            "chapterIdsRead": chapters_read,
+            "chapterIdsRead": chapters_read.into_iter().collect::<Vec<_>>(),
         });
 
         if let Some(unread) = chapter_ids_unread.optional() {
             body.as_object_mut().unwrap().insert(
                 "chapterIdsUnread".into(),
-                Value::Array(unread.into_iter().map(Value::String).collect()),
+                Value::Array(
+                    unread
+                        .into_iter()
+                        .map(|v| Value::String(v.to_string()))
+                        .collect(),
+                ),
             );
         }
 
         let res = Request::post((MangaDex::Api, Endpoint::Manga))
-            .join(manga.to_string())
+            .join(manga.into().as_ref())
             .join("read")
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
@@ -70,13 +78,14 @@ impl Client {
             .send()
             .await?;
 
-        res.manga_dex_response::<Data<Vec<String>>>().await
+        res.manga_dex_response::<()>().await
     }
 
-    pub async fn check_read_markers<S: std::fmt::Display, M>(
+    /// List the chapters that are marked as read for multiple manga
+    pub async fn list_multiple_read_markers<S: Into<MangaId>, M>(
         &mut self,
         ids: Vec<S>,
-    ) -> Result<Vec<String>, Error> {
+    ) -> Result<Vec<ChapterId>, Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -90,18 +99,20 @@ impl Client {
             )
             .param(
                 "ids",
-                ids.into_iter().map(|v| v.to_string()).collect::<Vec<_>>(),
+                ids.into_iter()
+                    .map(|v| v.into().to_string())
+                    .collect::<Vec<_>>(),
             )
             .send()
             .await?;
 
-        res.manga_dex_response::<Data<Vec<String>>>().await
+        res.manga_dex_response::<Data<Vec<ChapterId>>>().await
     }
 
-    pub async fn check_read_markers_grouped<S: std::fmt::Display, M>(
+    pub async fn list_multiple_read_markers_grouped<S: Into<MangaId>, M>(
         &mut self,
         ids: Vec<S>,
-    ) -> Result<BTreeMap<String, Vec<String>>, Error> {
+    ) -> Result<BTreeMap<MangaId, Vec<ChapterId>>, Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -115,13 +126,15 @@ impl Client {
             )
             .param(
                 "ids",
-                ids.into_iter().map(|v| v.to_string()).collect::<Vec<_>>(),
+                ids.into_iter()
+                    .map(|v| v.into().to_string())
+                    .collect::<Vec<_>>(),
             )
             .param("grouped", true)
             .send()
             .await?;
 
-        res.manga_dex_response::<Data<BTreeMap<String, Vec<String>>>>()
+        res.manga_dex_response::<Data<BTreeMap<MangaId, Vec<ChapterId>>>>()
             .await
     }
 

@@ -2,25 +2,25 @@ use std::collections::BTreeMap;
 
 use serde::{Deserialize, Serialize};
 
-use crate::client::ExtendParams;
+use crate::{client::ExtendParams, uuid::AuthorId};
 
 use super::{Order, Relationship};
 
 #[derive(Debug, Clone, Copy, PartialEq, Deserialize, strum::Display)]
 #[serde(rename_all = "snake_case")]
-#[strum(serialize_all="snake_case")]
+#[strum(serialize_all = "snake_case")]
 pub enum AuthorInclude {
     Manga,
 }
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct AuthorFilter {
-    limit: Option<usize>,
-    offset: Option<usize>,
-    ids: Vec<String>,
-    name: Option<String>,
-    orders: BTreeMap<String, Order>,
-    includes: Vec<AuthorInclude>,
+    pub limit: Option<usize>,
+    pub offset: Option<usize>,
+    pub ids: Vec<AuthorId>,
+    pub name: Option<String>,
+    pub order: BTreeMap<String, Order>,
+    pub includes: Vec<AuthorInclude>,
 }
 
 impl AuthorFilter {
@@ -34,23 +34,16 @@ impl AuthorFilter {
         self
     }
 
-    pub fn id(mut self, state: impl std::fmt::Display) -> Self {
-        self.ids.push(state.to_string());
+    pub fn ids<A: Into<AuthorId>>(mut self, ids: impl IntoIterator<Item = A>) -> Self {
+        self.ids = ids.into_iter().map(|v| v.into()).collect();
         self
     }
 
-    pub fn ids<S: std::fmt::Display>(mut self, ids: impl IntoIterator<Item=S>) -> Self {
-        self.ids.extend(ids.into_iter().map(|v| v.to_string()));
-        self
-    }
-
-    pub fn order(mut self, key: impl std::fmt::Display, order: Order) -> Self {
-        self.orders.insert(key.to_string(), order);
-        self
-    }
-
-    pub fn orders<S: std::fmt::Display>(mut self, orders: impl IntoIterator<Item=(S, Order)>) -> Self {
-        self.orders.extend(orders.into_iter().map(|(k, v)| (k.to_string(), v)));
+    pub fn order<S: std::fmt::Display>(
+        mut self,
+        order: impl IntoIterator<Item = (S, Order)>,
+    ) -> Self {
+        self.order = order.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
         self
     }
 
@@ -59,7 +52,7 @@ impl AuthorFilter {
         self
     }
 
-    pub fn includes(mut self, includes: impl IntoIterator<Item=AuthorInclude>) -> Self {
+    pub fn includes(mut self, includes: impl IntoIterator<Item = AuthorInclude>) -> Self {
         self.includes.extend(includes);
         self
     }
@@ -73,8 +66,8 @@ impl ExtendParams for AuthorFilter {
             request.add_param("ids", self.ids);
         }
 
-        if !self.orders.is_empty() {
-            request.add_param("order", self.orders);
+        if !self.order.is_empty() {
+            request.add_param("order", self.order);
         }
 
         if !self.includes.is_empty() {
@@ -83,67 +76,67 @@ impl ExtendParams for AuthorFilter {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthorAttributes {
-    name: String,
-    version: usize,
+    pub name: String,
+    pub version: usize,
 
-    image_url: Option<String>,
+    pub image_url: Option<String>,
     /// Localization to target text map
     #[serde(default)]
-    biography: BTreeMap<String, String>,
-    created_at: Option<String>,
-    updated_at: Option<String>,
+    pub biography: BTreeMap<String, String>,
+    pub created_at: Option<String>,
+    pub updated_at: Option<String>,
 
     #[serde(flatten)]
-    links: BTreeMap<String, Option<String>>
+    pub links: BTreeMap<String, Option<String>>,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Author {
-    id: String,
-    attributes: AuthorAttributes,
+    pub id: AuthorId,
+    pub attributes: AuthorAttributes,
     #[serde(default)]
-    relationships: Vec<Relationship>,
+    pub relationships: Vec<Relationship>,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateAuthor {
-    name: String,
+    pub name: String,
 
-    #[serde(skip_serializing_if="BTreeMap::is_empty")]
-    biography: BTreeMap<String, String>,
-    
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub biography: BTreeMap<String, String>,
+
     /* Links */
-    #[serde(skip_serializing_if="Option::is_none")]
-    twitter: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    pixiv: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    melon_book: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    fan_box: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    booth: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    nico_video: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    skeb: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    fantia: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    tumblr: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    youtube: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    weibo: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    naver: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    website: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub twitter: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pixiv: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub melon_book: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fan_box: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub booth: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nico_video: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub skeb: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fantia: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tumblr: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub youtube: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weibo: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub naver: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub website: Option<String>,
 }
 
 impl CreateAuthor {
@@ -159,8 +152,13 @@ impl CreateAuthor {
         self
     }
 
-    pub fn biography(mut self, lang: impl std::fmt::Display, biography: impl std::fmt::Display) -> Self {
-        self.biography.insert(lang.to_string(), biography.to_string());
+    pub fn biography(
+        mut self,
+        lang: impl std::fmt::Display,
+        biography: impl std::fmt::Display,
+    ) -> Self {
+        self.biography
+            .insert(lang.to_string(), biography.to_string());
         self
     }
 
@@ -233,39 +231,39 @@ impl CreateAuthor {
 #[derive(Default, Debug, Clone, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateAuthor {
-    name: String,
-    version: usize,
+    pub name: String,
+    pub version: usize,
 
-    #[serde(skip_serializing_if="BTreeMap::is_empty")]
-    biography: BTreeMap<String, String>,
-    
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub biography: BTreeMap<String, String>,
+
     /* Links */
-    #[serde(skip_serializing_if="Option::is_none")]
-    twitter: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    pixiv: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    melon_book: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    fan_box: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    booth: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    nico_video: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    skeb: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    fantia: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    tumblr: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    youtube: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    weibo: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    naver: Option<String>,
-    #[serde(skip_serializing_if="Option::is_none")]
-    website: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub twitter: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pixiv: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub melon_book: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fan_box: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub booth: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nico_video: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub skeb: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fantia: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tumblr: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub youtube: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub weibo: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub naver: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub website: Option<String>,
 }
 
 impl UpdateAuthor {
@@ -287,8 +285,13 @@ impl UpdateAuthor {
         self
     }
 
-    pub fn biography(mut self, lang: impl std::fmt::Display, biography: impl std::fmt::Display) -> Self {
-        self.biography.insert(lang.to_string(), biography.to_string());
+    pub fn biography(
+        mut self,
+        lang: impl std::fmt::Display,
+        biography: impl std::fmt::Display,
+    ) -> Self {
+        self.biography
+            .insert(lang.to_string(), biography.to_string());
         self
     }
 

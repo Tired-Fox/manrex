@@ -5,6 +5,7 @@ use crate::{
     client::{Endpoint, MangaDex, Optional, Request, CLIENT_NAME, CLIENT_VERSION},
     error::ResponseToError,
     model::{client::*, Data, Paginated},
+    uuid::ClientId,
     Client, Error,
 };
 
@@ -21,7 +22,10 @@ impl Client {
 
         let res = Request::get((MangaDex::Api, Endpoint::Client))
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .header(
+                AUTHORIZATION,
+                format!("Bearer {}", self.oauth().access_token()),
+            )
             .params_opt(filters.optional())
             .send()
             .await?;
@@ -30,7 +34,11 @@ impl Client {
     }
 
     /// Create a new personal client
-    pub async fn create_client<M>(&mut self, name: impl std::fmt::Display, description: impl Optional<String, M>) -> Result<ApiClient, Error> {
+    pub async fn create_client<M>(
+        &mut self,
+        name: impl std::fmt::Display,
+        description: impl Optional<String, M>,
+    ) -> Result<ApiClient, Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -42,32 +50,37 @@ impl Client {
         });
 
         if let Some(description) = description.optional() {
-            body
-                .as_object_mut()
+            body.as_object_mut()
                 .unwrap()
                 .insert("description".into(), serde_json::Value::String(description));
         }
 
         let res = Request::post((MangaDex::Api, Endpoint::Client))
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .header(
+                AUTHORIZATION,
+                format!("Bearer {}", self.oauth().access_token()),
+            )
             .json(&body)
             .send()
             .await?;
 
         res.manga_dex_response::<Data<ApiClient>>().await
     }
-    
+
     /// Delete a client
-    pub async fn delete_client(&mut self, id: impl std::fmt::Display) -> Result<(), Error> {
+    pub async fn delete_client(&mut self, id: impl Into<ClientId>) -> Result<(), Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
         let res = Request::delete((MangaDex::Api, Endpoint::Client))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .header(
+                AUTHORIZATION,
+                format!("Bearer {}", self.oauth().access_token()),
+            )
             .send()
             .await?;
 
@@ -75,15 +88,23 @@ impl Client {
     }
 
     /// Edit a client's version and description
-    pub async fn edit_client(&mut self, id: impl std::fmt::Display, version: usize, description: impl std::fmt::Display) -> Result<ApiClient, Error> {
+    pub async fn edit_client(
+        &mut self,
+        id: impl Into<ClientId>,
+        version: usize,
+        description: impl std::fmt::Display,
+    ) -> Result<ApiClient, Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
         let res = Request::post((MangaDex::Api, Endpoint::Client))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .header(
+                AUTHORIZATION,
+                format!("Bearer {}", self.oauth().access_token()),
+            )
             .json(&json!({
                 "description": description.to_string(),
                 "version": version,
@@ -95,15 +116,22 @@ impl Client {
     }
 
     /// Get a client by it's id
-    pub async fn get_client_by_id<M>(&mut self, id: impl std::fmt::Display, includes: impl Optional<Vec<ClientInclude>, M>) -> Result<ApiClient, Error> {
+    pub async fn get_client_by_id<M>(
+        &mut self,
+        id: impl Into<ClientId>,
+        includes: impl Optional<Vec<ClientInclude>, M>,
+    ) -> Result<ApiClient, Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
         let res = Request::get((MangaDex::Api, Endpoint::Client))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .header(
+                AUTHORIZATION,
+                format!("Bearer {}", self.oauth().access_token()),
+            )
             .param_opt("includes", includes.optional())
             .send()
             .await?;
@@ -112,16 +140,22 @@ impl Client {
     }
 
     /// Get a client's secret
-    pub async fn get_secret_by_client_id(&mut self, id: impl std::fmt::Display) -> Result<String, Error> {
+    pub async fn get_secret_by_client_id(
+        &mut self,
+        id: impl Into<ClientId>,
+    ) -> Result<String, Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
         let res = Request::get((MangaDex::Api, Endpoint::Client))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .join("secret")
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .header(
+                AUTHORIZATION,
+                format!("Bearer {}", self.oauth().access_token()),
+            )
             .send()
             .await?;
 
@@ -129,16 +163,22 @@ impl Client {
     }
 
     /// Regenerate a clients secret
-    pub async fn regenerate_client_secret(&mut self, id: impl std::fmt::Display) -> Result<String, Error> {
+    pub async fn regenerate_client_secret(
+        &mut self,
+        id: impl Into<ClientId>,
+    ) -> Result<String, Error> {
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
         let res = Request::post((MangaDex::Api, Endpoint::Client))
-            .join(id.to_string())
+            .join(id.into().as_ref())
             .join("secret")
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
-            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .header(
+                AUTHORIZATION,
+                format!("Bearer {}", self.oauth().access_token()),
+            )
             .json(&json!({}))
             .send()
             .await?;
