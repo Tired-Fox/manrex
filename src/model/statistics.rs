@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::IntoData;
 
@@ -19,13 +19,13 @@ impl<S: Ord> IntoData<BTreeMap<S, Comments>> for Statistics<BTreeMap<S, Statisti
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StatisticComments {
     pub comments: Comments,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Comments {
     /// The id of the thead backing the comments for that entity on the MangaDex Forums.

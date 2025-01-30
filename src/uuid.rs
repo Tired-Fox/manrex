@@ -81,6 +81,12 @@ macro_rules! impl_uid {
                 }
             }
 
+            impl From<&String> for $name {
+                fn from(value: &String) -> Self {
+                    Self(value.clone().into())
+                }
+            }
+
             impl From<$name> for Param {
                 fn from(value: $name) -> Self {
                     Self::Value(value.as_ref().to_string())

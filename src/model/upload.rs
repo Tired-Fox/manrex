@@ -4,7 +4,7 @@ use crate::uuid::UploadSessionId;
 
 use super::IntoData;
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UploadSessionAttributes {
     pub version: usize,
@@ -31,7 +31,7 @@ impl UploadSessionAttributes {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UploadSession {
     pub id: UploadSessionId,
@@ -48,7 +48,7 @@ pub enum FileSource {
     Remote,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileUploadSessionAttributes {
     pub original_file_name: String,
@@ -59,14 +59,14 @@ pub struct FileUploadSessionAttributes {
     pub version: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FileUploadSession {
     pub id: UploadSessionId,
     pub attributes: FileUploadSessionAttributes,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ChapterDraft {
     pub volume: Option<String>,
@@ -79,7 +79,7 @@ pub struct ChapterDraft {
     pub publish_at: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct RequiresApproval {
     pub requires_approval: bool,

@@ -2,6 +2,7 @@ use author::AuthorAttributes;
 use chapter::ChapterAttributes;
 use cover::CoverAttributes;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 use crate::{error::MangaDexError, uuid::RelationshipId, Error};
 
@@ -99,31 +100,35 @@ impl std::fmt::Display for Order {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize, strum::EnumIs)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, strum::EnumIs)]
 #[serde(tag = "type", content = "attributes", rename_all = "snake_case")]
 pub enum RelationshipAttributes {
-    CoverArt(CoverAttributes),
-    Author(AuthorAttributes),
-    Chapter(ChapterAttributes),
+    CoverArt(Option<CoverAttributes>),
+    Author(Option<AuthorAttributes>),
+    Artist(Option<Value>),
+    Creator(Option<Value>),
+    Chapter(Option<ChapterAttributes>),
+    #[serde(untagged)]
+    Other(String)
     // TODO: Remaining types
 }
 
 impl RelationshipAttributes {
-    pub fn as_cover_art(self) -> CoverAttributes {
+    pub fn as_cover_art(self) -> Option<CoverAttributes> {
         match self {
             Self::CoverArt(ca) => ca,
             _ => unreachable!("failed to unwrap RelationshipAttributes as CoverAttributes"),
         }
     }
 
-    pub fn as_author(self) -> AuthorAttributes {
+    pub fn as_author(self) -> Option<AuthorAttributes> {
         match self {
             Self::Author(c) => c,
             _ => unreachable!("failed to unwrap RelationshipAttributes as AuthorAttributes"),
         }
     }
 
-    pub fn as_chapter(self) -> ChapterAttributes {
+    pub fn as_chapter(self) -> Option<ChapterAttributes> {
         match self {
             Self::Chapter(c) => c,
             _ => unreachable!("failed to unwrap RelationshipAttributes as ChapterAttributes"),
@@ -131,7 +136,7 @@ impl RelationshipAttributes {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Relationship {
     pub id: RelationshipId,
@@ -215,7 +220,7 @@ pub enum ReadingStatus {
     Completed,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, strum::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, strum::Display)]
 #[serde(rename_all = "UPPERCASE")]
 #[strum(serialize_all = "UPPERCASE")]
 pub enum TagMode {

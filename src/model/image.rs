@@ -7,7 +7,7 @@ use reqwest::header::{CONTENT_TYPE, USER_AGENT};
 
 use crate::{bail, client::{Request, CLIENT_NAME, CLIENT_VERSION}, Error};
 
-type ByteStream = Pin<Box<dyn Stream<Item=reqwest::Result<Bytes>>>>;
+type ByteStream = Pin<Box<dyn Stream<Item=reqwest::Result<Bytes>> + Send>>;
 
 pub struct Image {
     /// URL where to fetch the image

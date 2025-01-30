@@ -16,7 +16,7 @@ use super::{
     MangaState, Order, Relation, Relationship, RelationshipAttributes, Status, TagGroup, TagMode,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, strum::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, strum::Display)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum MangaInclude {
@@ -28,32 +28,56 @@ pub enum MangaInclude {
     Creator,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MangaFilter {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
-    pub ids: Vec<MangaId>,
-    pub includes: Vec<MangaInclude>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ids: Option<Vec<MangaId>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub includes: Option<Vec<MangaInclude>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub author_or_artist: Option<Uuid>,
-    pub authors: Vec<AuthorId>,
-    pub artists: Vec<ArtistId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub authors: Option<Vec<AuthorId>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artists: Option<Vec<ArtistId>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub year: Option<String>,
-    pub included_tags: Vec<TagId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub included_tags: Option<Vec<TagId>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub included_tags_mode: Option<TagMode>,
-    pub excluded_tags: Vec<TagId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub excluded_tags: Option<Vec<TagId>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub excluded_tags_mode: Option<TagMode>,
-    pub status: Vec<Status>,
-    pub original_languages: Vec<String>,
-    pub excluded_original_languages: Vec<String>,
-    pub available_translated_languages: Vec<String>,
-    pub publication_demographic: HashSet<Demographic>,
-    pub content_ratings: HashSet<ContentRating>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<Vec<Status>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub original_languages: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub excluded_original_languages: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub available_translated_languages: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub publication_demographic: Option<HashSet<Demographic>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_ratings: Option<HashSet<ContentRating>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at_since: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at_since: Option<String>,
-    pub order: BTreeMap<String, Order>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<BTreeMap<String, Order>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub has_available_chapters: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub group: Option<String>,
 }
 
@@ -64,12 +88,12 @@ impl MangaFilter {
     }
 
     pub fn ids<M: Into<MangaId>>(mut self, s: impl IntoIterator<Item = M>) -> Self {
-        self.ids = s.into_iter().map(|v| v.into()).collect();
+        self.ids = Some(s.into_iter().map(|v| v.into()).collect());
         self
     }
 
     pub fn includes(mut self, s: impl IntoIterator<Item = MangaInclude>) -> Self {
-        self.includes = s.into_iter().collect();
+        self.includes = Some(s.into_iter().collect());
         self
     }
 
@@ -89,12 +113,12 @@ impl MangaFilter {
     }
 
     pub fn authors<A: Into<AuthorId>>(mut self, s: impl IntoIterator<Item = A>) -> Self {
-        self.authors = s.into_iter().map(|v| v.into()).collect();
+        self.authors = Some(s.into_iter().map(|v| v.into()).collect());
         self
     }
 
     pub fn artists<A: Into<ArtistId>>(mut self, s: impl IntoIterator<Item = A>) -> Self {
-        self.artists = s.into_iter().map(|v| v.into()).collect();
+        self.artists = Some(s.into_iter().map(|v| v.into()).collect());
         self
     }
 
@@ -104,7 +128,7 @@ impl MangaFilter {
     }
 
     pub fn included_tags<T: Into<TagId>>(mut self, s: impl IntoIterator<Item = T>) -> Self {
-        self.included_tags = s.into_iter().map(|v| v.into()).collect();
+        self.included_tags = Some(s.into_iter().map(|v| v.into()).collect());
         self
     }
 
@@ -114,7 +138,7 @@ impl MangaFilter {
     }
 
     pub fn excluded_tags<T: Into<TagId>>(mut self, s: impl IntoIterator<Item = T>) -> Self {
-        self.excluded_tags = s.into_iter().map(|v| v.into()).collect();
+        self.excluded_tags = Some(s.into_iter().map(|v| v.into()).collect());
         self
     }
 
@@ -124,7 +148,7 @@ impl MangaFilter {
     }
 
     pub fn status(mut self, s: impl IntoIterator<Item = Status>) -> Self {
-        self.status = s.into_iter().collect();
+        self.status = Some(s.into_iter().collect());
         self
     }
 
@@ -132,7 +156,7 @@ impl MangaFilter {
         mut self,
         s: impl IntoIterator<Item = S>,
     ) -> Self {
-        self.original_languages = s.into_iter().map(|v| v.to_string()).collect();
+        self.original_languages = Some(s.into_iter().map(|v| v.to_string()).collect());
         self
     }
 
@@ -140,7 +164,7 @@ impl MangaFilter {
         mut self,
         s: impl IntoIterator<Item = S>,
     ) -> Self {
-        self.excluded_original_languages = s.into_iter().map(|v| v.to_string()).collect();
+        self.excluded_original_languages = Some(s.into_iter().map(|v| v.to_string()).collect());
         self
     }
 
@@ -148,17 +172,17 @@ impl MangaFilter {
         mut self,
         s: impl IntoIterator<Item = S>,
     ) -> Self {
-        self.available_translated_languages = s.into_iter().map(|v| v.to_string()).collect();
+        self.available_translated_languages = Some(s.into_iter().map(|v| v.to_string()).collect());
         self
     }
 
     pub fn publication_demographic(mut self, s: impl IntoIterator<Item = Demographic>) -> Self {
-        self.publication_demographic = s.into_iter().collect();
+        self.publication_demographic = Some(s.into_iter().collect());
         self
     }
 
     pub fn content_ratings(mut self, s: impl IntoIterator<Item = ContentRating>) -> Self {
-        self.content_ratings = s.into_iter().collect();
+        self.content_ratings = Some(s.into_iter().collect());
         self
     }
 
@@ -172,7 +196,7 @@ impl MangaFilter {
     }
 
     pub fn order<S: std::fmt::Display>(mut self, s: impl IntoIterator<Item = (S, Order)>) -> Self {
-        self.order = s.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+        self.order = Some(s.into_iter().map(|(k, v)| (k.to_string(), v)).collect());
         self
     }
 
@@ -190,86 +214,45 @@ impl MangaFilter {
 impl ExtendParams for MangaFilter {
     fn extend_params(self, request: &mut crate::client::Request) {
         request.add_param_opt("title", self.title);
-
-        if !self.includes.is_empty() {
-            request.add_param("includes", self.includes);
-        }
-
-        if !self.ids.is_empty() {
-            request.add_param("ids", self.ids);
-        }
-
+        request.add_param_opt("includes", self.includes);
+        request.add_param_opt("ids", self.ids);
         request.add_param_opt("limit", self.limit);
         request.add_param_opt("offset", self.offset);
-
         request.add_param_opt("authorOrArtist", self.author_or_artist);
-        if !self.authors.is_empty() {
-            request.add_param("authors", self.authors);
-        }
-        if !self.artists.is_empty() {
-            request.add_param("artists", self.artists);
-        }
-
+        request.add_param_opt("authors", self.authors);
+        request.add_param_opt("artists", self.artists);
         request.add_param_opt("year", self.year);
-
-        if !self.included_tags.is_empty() {
-            request.add_param("includedTags", self.included_tags);
-        }
+        request.add_param_opt("includedTags", self.included_tags);
         request.add_param_opt(
             "includedTagsMode",
             self.included_tags_mode.map(|v| v.to_string()),
         );
-
-        if !self.excluded_tags.is_empty() {
-            request.add_param("excludedTags", self.excluded_tags);
-        }
+        request.add_param_opt("excludedTags", self.excluded_tags);
         request.add_param_opt(
             "excludedTagsMode",
             self.excluded_tags_mode.map(|v| v.to_string()),
         );
-
-        if !self.status.is_empty() {
-            request.add_param("status", self.status);
-        }
-
-        if !self.original_languages.is_empty() {
-            request.add_param("originalLanguages", self.original_languages);
-        }
-        if !self.excluded_original_languages.is_empty() {
-            request.add_param(
-                "excludedOriginalLanguages",
-                self.excluded_original_languages,
-            );
-        }
-
-        if !self.available_translated_languages.is_empty() {
-            request.add_param(
-                "availableTranslatedLanguages",
-                self.available_translated_languages,
-            );
-        }
-
-        if !self.publication_demographic.is_empty() {
-            request.add_param("publicationDemographic", self.publication_demographic);
-        }
-
-        if !self.content_ratings.is_empty() {
-            request.add_param("contentRatings", self.content_ratings);
-        }
-
+        request.add_param_opt("status", self.status);
+        request.add_param_opt("originalLanguages", self.original_languages);
+        request.add_param_opt(
+            "excludedOriginalLanguages",
+            self.excluded_original_languages,
+        );
+        request.add_param_opt(
+            "availableTranslatedLanguages",
+            self.available_translated_languages,
+        );
+        request.add_param_opt("publicationDemographic", self.publication_demographic);
+        request.add_param_opt("contentRatings", self.content_ratings);
         request.add_param_opt("createdAtSince", self.created_at_since);
         request.add_param_opt("updatedAtSince", self.updated_at_since);
-
-        if !self.order.is_empty() {
-            request.add_param("order", self.order);
-        }
-
+        request.add_param_opt("order", self.order);
         request.add_param_opt("hasAvailableChapters", self.has_available_chapters);
         request.add_param_opt("group", self.group);
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TagAttributes {
     pub name: BTreeMap<String, String>,
@@ -278,7 +261,7 @@ pub struct TagAttributes {
     pub version: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Tag {
     pub id: TagId,
@@ -286,7 +269,7 @@ pub struct Tag {
     pub relationships: Vec<Relationship>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MangaAttributes {
     pub title: BTreeMap<String, String>,
@@ -311,7 +294,7 @@ pub struct MangaAttributes {
     pub updated_at: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Manga {
     pub id: MangaId,
@@ -334,6 +317,8 @@ impl Manga {
 
         let cover_art = cover_art
             .first()
+            .ok_or(Error::custom("missing cover art relationship attributes. Make sure to add `CoverArt` to the filter includes when fetching the manga"))?
+            .as_ref()
             .ok_or(Error::custom("missing cover art relationship attributes. Make sure to add `CoverArt` to the filter includes when fetching the manga"))?;
 
         let file_name = cover_art.file_name.as_str();
@@ -380,7 +365,7 @@ pub struct VolumeChapter {
     pub count: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateManga {
     pub title: String,
@@ -519,7 +504,7 @@ impl CreateManga {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateManga {
     pub version: usize,
@@ -678,24 +663,41 @@ impl UpdateManga {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FeedFilter {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<usize>,
-    pub translated_languages: Vec<String>,
-    pub original_languages: Vec<String>,
-    pub excluded_original_languages: Vec<String>,
-    pub content_ratings: HashSet<ContentRating>,
-    pub excluded_groups: Vec<GroupId>,
-    pub excluded_uploaders: Vec<UserId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub translated_languages: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub original_languages: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub excluded_original_languages: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_ratings: Option<HashSet<ContentRating>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub excluded_groups: Option<Vec<GroupId>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub excluded_uploaders: Option<Vec<UserId>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at_since: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at_since: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub publish_at_since: Option<String>,
-    pub order: BTreeMap<String, Order>,
-    pub includes: Vec<ChapterInclude>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<BTreeMap<String, Order>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub includes: Option<Vec<ChapterInclude>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_future_updates: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_empty_pages: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_future_publish_at: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub include_external_url: Option<bool>,
 }
 
@@ -729,43 +731,43 @@ impl FeedFilter {
         mut self,
         s: impl IntoIterator<Item = S>,
     ) -> Self {
-        self.translated_languages = s.into_iter().map(|v| v.to_string()).collect();
+        self.translated_languages = Some(s.into_iter().map(|v| v.to_string()).collect());
         self
     }
     pub fn original_languages<S: std::fmt::Display>(
         mut self,
         s: impl IntoIterator<Item = S>,
     ) -> Self {
-        self.original_languages = s.into_iter().map(|v| v.to_string()).collect();
+        self.original_languages = Some(s.into_iter().map(|v| v.to_string()).collect());
         self
     }
     pub fn excluded_original_languages<S: std::fmt::Display>(
         mut self,
         s: impl IntoIterator<Item = S>,
     ) -> Self {
-        self.excluded_original_languages = s.into_iter().map(|v| v.to_string()).collect();
+        self.excluded_original_languages = Some(s.into_iter().map(|v| v.to_string()).collect());
         self
     }
     pub fn excluded_groups<G: Into<GroupId>>(mut self, s: impl IntoIterator<Item = G>) -> Self {
-        self.excluded_groups = s.into_iter().map(|v| v.into()).collect();
+        self.excluded_groups = Some(s.into_iter().map(|v| v.into()).collect());
         self
     }
     pub fn excluded_uploaders<U: Into<UserId>>(mut self, s: impl IntoIterator<Item = U>) -> Self {
-        self.excluded_uploaders = s.into_iter().map(|v| v.into()).collect();
+        self.excluded_uploaders = Some(s.into_iter().map(|v| v.into()).collect());
         self
     }
 
     pub fn content_ratings(mut self, s: impl IntoIterator<Item = ContentRating>) -> Self {
-        self.content_ratings = s.into_iter().collect();
+        self.content_ratings = Some(s.into_iter().collect());
         self
     }
     pub fn includes(mut self, s: impl IntoIterator<Item = ChapterInclude>) -> Self {
-        self.includes = s.into_iter().collect();
+        self.includes = Some(s.into_iter().collect());
         self
     }
 
     pub fn order<S: std::fmt::Display>(mut self, s: impl IntoIterator<Item = (S, Order)>) -> Self {
-        self.order = s.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+        self.order = Some(s.into_iter().map(|(k, v)| (k.to_string(), v)).collect());
         self
     }
 
@@ -787,35 +789,17 @@ impl ExtendParams for FeedFilter {
     fn extend_params(self, request: &mut crate::client::Request) {
         request.add_param_opt("limit", self.limit);
         request.add_param_opt("offset", self.offset);
-
-        if !self.translated_languages.is_empty() {
-            request.add_param("translatedLanguage", self.translated_languages);
-        }
-        if !self.original_languages.is_empty() {
-            request.add_param("originalLanguage", self.original_languages);
-        }
-        if !self.excluded_original_languages.is_empty() {
-            request.add_param("excludedOriginalLanguage", self.excluded_original_languages);
-        }
-        if !self.content_ratings.is_empty() {
-            request.add_param("contentRatings", self.content_ratings);
-        }
-        if !self.excluded_groups.is_empty() {
-            request.add_param("excludedGroups", self.excluded_groups);
-        }
-        if !self.excluded_uploaders.is_empty() {
-            request.add_param("excludedUploaders", self.excluded_uploaders);
-        }
-
+        request.add_param_opt("translatedLanguage", self.translated_languages);
+        request.add_param_opt("originalLanguage", self.original_languages);
+        request.add_param_opt("excludedOriginalLanguage", self.excluded_original_languages);
+        request.add_param_opt("contentRatings", self.content_ratings);
+        request.add_param_opt("excludedGroups", self.excluded_groups);
+        request.add_param_opt("excludedUploaders", self.excluded_uploaders);
         request.add_param_opt("createdAtSince", self.created_at_since);
         request.add_param_opt("updatedAtSince", self.updated_at_since);
         request.add_param_opt("publishAtSince", self.publish_at_since);
-        if !self.order.is_empty() {
-            request.add_param("order", self.order);
-        }
-        if !self.includes.is_empty() {
-            request.add_param("includes", self.includes);
-        }
+        request.add_param_opt("order", self.order);
+        request.add_param_opt("includes", self.includes);
 
         if let Some(s) = self.include_future_updates {
             request.add_param("includeFutureUpdates", if s { "1" } else { "0" });
@@ -832,29 +816,35 @@ impl ExtendParams for FeedFilter {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct RandomMangaFilter {
-    pub includes: Vec<MangaInclude>,
-    pub content_ratings: HashSet<ContentRating>,
-    pub included_tags: Vec<TagId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub includes: Option<Vec<MangaInclude>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub content_ratings: Option<HashSet<ContentRating>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub included_tags: Option<Vec<TagId>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub included_tags_mode: Option<TagMode>,
-    pub excluded_tags: Vec<TagId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub excluded_tags: Option<Vec<TagId>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub excluded_tags_mode: Option<TagMode>,
 }
 
 impl RandomMangaFilter {
     pub fn includes(mut self, s: impl IntoIterator<Item = MangaInclude>) -> Self {
-        self.includes = s.into_iter().collect();
+        self.includes = Some(s.into_iter().collect());
         self
     }
 
     pub fn content_ratings(mut self, s: impl IntoIterator<Item = ContentRating>) -> Self {
-        self.content_ratings = s.into_iter().collect();
+        self.content_ratings = Some(s.into_iter().collect());
         self
     }
 
     pub fn included_tags<T: Into<TagId>>(mut self, s: impl IntoIterator<Item = T>) -> Self {
-        self.included_tags = s.into_iter().map(|v| v.into()).collect();
+        self.included_tags = Some(s.into_iter().map(|v| v.into()).collect());
         self
     }
 
@@ -864,7 +854,7 @@ impl RandomMangaFilter {
     }
 
     pub fn excluded_tags<T: Into<TagId>>(mut self, s: impl IntoIterator<Item = T>) -> Self {
-        self.excluded_tags = s.into_iter().map(|v| v.into()).collect();
+        self.excluded_tags = Some(s.into_iter().map(|v| v.into()).collect());
         self
     }
 
@@ -876,25 +866,14 @@ impl RandomMangaFilter {
 
 impl ExtendParams for RandomMangaFilter {
     fn extend_params(self, request: &mut crate::client::Request) {
-        if !self.includes.is_empty() {
-            request.add_param("includes", self.includes);
-        }
-
-        if !self.content_ratings.is_empty() {
-            request.add_param("contentRating", self.content_ratings);
-        }
-
-        if !self.included_tags.is_empty() {
-            request.add_param("includedTags", self.included_tags);
-        }
+        request.add_param_opt("includes", self.includes);
+        request.add_param_opt("contentRating", self.content_ratings);
+        request.add_param_opt("includedTags", self.included_tags);
         request.add_param_opt(
             "includedTagsMode",
             self.included_tags_mode.map(|v| v.to_string()),
         );
-
-        if !self.excluded_tags.is_empty() {
-            request.add_param("excludedTags", self.excluded_tags);
-        }
+        request.add_param_opt("excludedTags", self.excluded_tags);
         request.add_param_opt(
             "excludedTagsMode",
             self.excluded_tags_mode.map(|v| v.to_string()),
@@ -924,13 +903,18 @@ impl IntoData<Status> for DataStatus {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct DraftFilter {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub state: Option<MangaState>,
-    pub order: BTreeMap<String, Order>,
-    pub includes: Vec<MangaInclude>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<BTreeMap<String, Order>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub includes: Option<Vec<MangaInclude>>,
 }
 
 impl DraftFilter {
@@ -950,39 +934,34 @@ impl DraftFilter {
     }
 
     pub fn includes(mut self, s: impl IntoIterator<Item = MangaInclude>) -> Self {
-        self.includes = s.into_iter().collect();
+        self.includes = Some(s.into_iter().collect());
         self
     }
 
     pub fn order<S: std::fmt::Display>(mut self, s: impl IntoIterator<Item = (S, Order)>) -> Self {
-        self.order = s.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+        self.order = Some(s.into_iter().map(|(k, v)| (k.to_string(), v)).collect());
         self
     }
 }
 
 impl ExtendParams for DraftFilter {
     fn extend_params(self, request: &mut crate::client::Request) {
-        if !self.includes.is_empty() {
-            request.add_param("includes", self.includes);
-        }
-        if !self.order.is_empty() {
-            request.add_param("order", self.order);
-        }
-
+        request.add_param_opt("includes", self.includes);
+        request.add_param_opt("order", self.order);
         request.add_param_opt("limit", self.limit);
         request.add_param_opt("offset", self.offset);
         request.add_param_opt("state", self.state.map(|v| v.to_string()));
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MangaRelationAttributes {
     pub relation: Relation,
     pub version: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MangaRelation {
     pub id: Uuid,

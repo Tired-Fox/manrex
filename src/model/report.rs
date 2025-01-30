@@ -10,7 +10,7 @@ use super::{Category, Order, Relationship};
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReportReasonAttributes {
     pub reason: BTreeMap<String, String>,
@@ -19,7 +19,7 @@ pub struct ReportReasonAttributes {
     pub version: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReportReason {
     pub id: ReasonId,
@@ -38,7 +38,7 @@ pub enum ReportStatus {
     Autoresolved,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReportAttributes {
     pub details: String,
@@ -47,7 +47,7 @@ pub struct ReportAttributes {
     pub created_at: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Report {
     pub id: ReportId,
@@ -55,7 +55,7 @@ pub struct Report {
     pub relationships: Vec<Relationship>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateReport {
     pub category: Category,
@@ -79,7 +79,7 @@ impl CreateReport {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize, strum::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize, strum::Display)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum ReportInclude {
@@ -87,17 +87,25 @@ pub enum ReportInclude {
     User,
 }
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct ReportFilter {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub category: Option<Category>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub reason_id: Option<ReasonId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub object_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<ReportStatus>,
 
-    pub order: BTreeMap<String, Order>,
-    pub includes: Vec<ReportInclude>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<BTreeMap<String, Order>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub includes: Option<Vec<ReportInclude>>,
 }
 
 impl ReportFilter {
@@ -135,15 +143,15 @@ impl ReportFilter {
         mut self,
         includes: impl IntoIterator<Item = (S, Order)>,
     ) -> Self {
-        self.order = includes
+        self.order = Some(includes
             .into_iter()
             .map(|(k, v)| (k.to_string(), v))
-            .collect();
+            .collect());
         self
     }
 
-    pub fn include(mut self, includes: impl IntoIterator<Item = ReportInclude>) -> Self {
-        self.includes.extend(includes);
+    pub fn includes(mut self, includes: impl IntoIterator<Item = ReportInclude>) -> Self {
+        self.includes = Some(includes.into_iter().collect());
         self
     }
 }
@@ -156,13 +164,7 @@ impl ExtendParams for ReportFilter {
         request.add_param_opt("status", self.status.map(|v| v.to_string()));
         request.add_param_opt("reasonId", self.reason_id);
         request.add_param_opt("objectId", self.object_id);
-
-        if !self.order.is_empty() {
-            request.add_param("order", self.order);
-        }
-
-        if !self.includes.is_empty() {
-            request.add_param("includes", self.includes);
-        }
+        request.add_param_opt("order", self.order);
+        request.add_param_opt("includes", self.includes);
     }
 }

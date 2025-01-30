@@ -9,7 +9,7 @@ use crate::{
 
 use super::{Order, Relationship};
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanlationGroupAttributes {
     pub name: String,
@@ -34,7 +34,7 @@ pub struct ScanlationGroupAttributes {
     pub updated_at: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanlationGroup {
     pub id: GroupId,
@@ -42,7 +42,7 @@ pub struct ScanlationGroup {
     pub relationships: Vec<Relationship>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize, strum::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize, strum::Display)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum ScanlationGroupInclude {
@@ -50,15 +50,22 @@ pub enum ScanlationGroupInclude {
     Member,
 }
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct ScanlationGroupFilter {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<usize>,
-    pub ids: Vec<GroupId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ids: Option<Vec<GroupId>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub focused_language: Option<String>,
-    pub order: BTreeMap<String, Order>,
-    pub includes: Vec<ScanlationGroupInclude>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<BTreeMap<String, Order>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub includes: Option<Vec<ScanlationGroupInclude>>,
 }
 
 impl ScanlationGroupFilter {
@@ -73,7 +80,7 @@ impl ScanlationGroupFilter {
     }
 
     pub fn ids<G: Into<GroupId>>(mut self, s: impl IntoIterator<Item = G>) -> Self {
-        self.ids = s.into_iter().map(|v| v.into()).collect();
+        self.ids = Some(s.into_iter().map(|v| v.into()).collect());
         self
     }
 
@@ -91,15 +98,15 @@ impl ScanlationGroupFilter {
         mut self,
         includes: impl IntoIterator<Item = (S, Order)>,
     ) -> Self {
-        self.order = includes
+        self.order = Some(includes
             .into_iter()
             .map(|(k, v)| (k.to_string(), v))
-            .collect();
+            .collect());
         self
     }
 
     pub fn include(mut self, includes: impl IntoIterator<Item = ScanlationGroupInclude>) -> Self {
-        self.includes.extend(includes);
+        self.includes = Some(includes.into_iter().collect());
         self
     }
 }
@@ -108,25 +115,15 @@ impl ExtendParams for ScanlationGroupFilter {
     fn extend_params(self, request: &mut crate::client::Request) {
         request.add_param_opt("limit", self.limit);
         request.add_param_opt("offset", self.offset);
-
         request.add_param_opt("name", self.name);
         request.add_param_opt("focusedLanguage", self.focused_language);
-
-        if !self.ids.is_empty() {
-            request.add_param("ids", self.ids);
-        }
-
-        if !self.order.is_empty() {
-            request.add_param("order", self.order);
-        }
-
-        if !self.includes.is_empty() {
-            request.add_param("includes", self.includes);
-        }
+        request.add_param_opt("ids", self.ids);
+        request.add_param_opt("order", self.order);
+        request.add_param_opt("includes", self.includes);
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CreateScanlationGroup {
     pub name: String,
 
@@ -212,7 +209,7 @@ impl CreateScanlationGroup {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UpdateScanlationGroup {
     pub version: usize,
 

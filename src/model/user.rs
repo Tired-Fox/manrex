@@ -1,18 +1,23 @@
 use std::collections::BTreeMap;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::{client::ExtendParams, uuid::UserId};
 
 use super::{Order, Relationship};
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct UserFilter {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<usize>,
-    pub ids: Vec<UserId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ids: Option<Vec<UserId>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub username: Option<String>,
-    pub order: BTreeMap<String, Order>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<BTreeMap<String, Order>>,
 }
 
 impl UserFilter {
@@ -32,7 +37,7 @@ impl UserFilter {
     }
 
     pub fn ids<U: Into<UserId>>(mut self, ids: impl IntoIterator<Item = U>) -> Self {
-        self.ids = ids.into_iter().map(|v| v.into()).collect();
+        self.ids = Some(ids.into_iter().map(|v| v.into()).collect());
         self
     }
 
@@ -40,8 +45,7 @@ impl UserFilter {
         mut self,
         orders: impl IntoIterator<Item = (S, Order)>,
     ) -> Self {
-        self.order
-            .extend(orders.into_iter().map(|(k, v)| (k.to_string(), v)));
+        self.order = Some(orders.into_iter().map(|(k, v)| (k.to_string(), v)).collect());
         self
     }
 }
@@ -51,17 +55,12 @@ impl ExtendParams for UserFilter {
         request.add_param_opt("limit", self.limit);
         request.add_param_opt("offset", self.offset);
         request.add_param_opt("username", self.username);
-        if !self.ids.is_empty() {
-            request.add_param("ids", self.ids);
-        }
-
-        if !self.order.is_empty() {
-            request.add_param("order", self.order);
-        }
+        request.add_param_opt("ids", self.ids);
+        request.add_param_opt("order", self.order);
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserAttributes {
     pub username: String,
@@ -69,7 +68,7 @@ pub struct UserAttributes {
     pub version: usize,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
     pub id: UserId,

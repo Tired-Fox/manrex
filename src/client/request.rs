@@ -8,8 +8,9 @@ use reqwest::{
     header::{HeaderMap, HeaderValue, IntoHeaderName},
     multipart, Body, Client, Method,
 };
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum OneOrMany<S> {
     One(S),
     Many(Vec<S>),
@@ -97,8 +98,15 @@ impl Param {
     fn encode(&self, name: &str) -> String {
         match self {
             Self::Array(values) => {
-                url::form_urlencoded::byte_serialize(values.join(",").as_bytes())
-                    .collect::<String>()
+                values.iter()
+                    .map(|v| {
+                        format!("{}={}",
+                            url::form_urlencoded::byte_serialize(format!("{name}[]").as_bytes()).collect::<String>(),
+                            url::form_urlencoded::byte_serialize(v.as_bytes()).collect::<String>(),
+                        )
+                    })
+                    .collect::<Vec<_>>()
+                    .join("&")
             }
             Self::Value(value) => {
                 url::form_urlencoded::byte_serialize(value.as_bytes()).collect::<String>()
@@ -146,14 +154,7 @@ impl std::fmt::Display for Params {
             .0
             .iter()
             .map(|(key, param)| {
-                if param.is_array() {
-                    format!(
-                        "{}={}",
-                        url::form_urlencoded::byte_serialize(format!("{key}[]").as_bytes())
-                            .collect::<String>(),
-                        param.encode(key)
-                    )
-                } else if param.is_map() {
+                if param.is_array() || param.is_map() {
                     param.encode(key)
                 } else {
                     format!("{key}={}", param.encode(key))

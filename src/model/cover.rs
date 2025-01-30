@@ -11,7 +11,7 @@ use crate::{
 
 use super::{Order, Relationship};
 
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, strum::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize, strum::Display)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum CoverInclude {
@@ -19,17 +19,25 @@ pub enum CoverInclude {
     User,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize)]
+#[derive(Default, Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CoverArtFilter {
+    #[serde(skip_serializing_if="Option::is_none")]
     pub limit: Option<usize>,
+    #[serde(skip_serializing_if="Option::is_none")]
     pub offset: Option<usize>,
-    pub manga: Vec<MangaId>,
-    pub ids: Vec<CoverId>,
-    pub uploaders: Vec<UserId>,
-    pub locales: Vec<String>,
-    pub order: BTreeMap<String, Order>,
-    pub includes: Vec<CoverInclude>,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub manga: Option<Vec<MangaId>>,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub ids: Option<Vec<CoverId>>,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub uploaders: Option<Vec<UserId>>,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub locales: Option<Vec<String>>,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub order: Option<BTreeMap<String, Order>>,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub includes: Option<Vec<CoverInclude>>,
 }
 
 impl CoverArtFilter {
@@ -44,32 +52,32 @@ impl CoverArtFilter {
     }
 
     pub fn manga<M: Into<MangaId>>(mut self, s: impl IntoIterator<Item = M>) -> Self {
-        self.manga = s.into_iter().map(|v| v.into()).collect();
+        self.manga = Some(s.into_iter().map(|v| v.into()).collect());
         self
     }
 
     pub fn ids<C: Into<CoverId>>(mut self, s: impl IntoIterator<Item = C>) -> Self {
-        self.ids = s.into_iter().map(|v| v.into()).collect();
+        self.ids = Some(s.into_iter().map(|v| v.into()).collect());
         self
     }
 
     pub fn uploaders<U: Into<UserId>>(mut self, s: impl IntoIterator<Item = U>) -> Self {
-        self.uploaders = s.into_iter().map(|v| v.into()).collect();
+        self.uploaders = Some(s.into_iter().map(|v| v.into()).collect());
         self
     }
 
     pub fn locales<S: std::fmt::Display>(mut self, s: impl IntoIterator<Item = S>) -> Self {
-        self.locales.extend(s.into_iter().map(|v| v.to_string()));
+        self.locales = Some(s.into_iter().map(|v| v.to_string()).collect());
         self
     }
 
     pub fn order<S: std::fmt::Display>(mut self, s: impl IntoIterator<Item = (S, Order)>) -> Self {
-        self.order = s.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
+        self.order = Some(s.into_iter().map(|(k, v)| (k.to_string(), v)).collect());
         self
     }
 
     pub fn includes(mut self, s: impl IntoIterator<Item = CoverInclude>) -> Self {
-        self.includes.extend(s);
+        self.includes = Some(s.into_iter().collect());
         self
     }
 }
@@ -78,28 +86,16 @@ impl ExtendParams for CoverArtFilter {
     fn extend_params(self, request: &mut crate::client::Request) {
         request.add_param_opt("limit", self.limit);
         request.add_param_opt("offset", self.offset);
-        if !self.manga.is_empty() {
-            request.add_param("manga", self.manga);
-        }
-        if !self.ids.is_empty() {
-            request.add_param("ids", self.ids);
-        }
-        if !self.uploaders.is_empty() {
-            request.add_param("uploaders", self.uploaders);
-        }
-        if !self.locales.is_empty() {
-            request.add_param("locales", self.locales);
-        }
-        if !self.order.is_empty() {
-            request.add_param("order", self.order);
-        }
-        if !self.includes.is_empty() {
-            request.add_param("includes", self.includes);
-        }
+        request.add_param_opt("manga", self.manga);
+        request.add_param_opt("ids", self.ids);
+        request.add_param_opt("uploaders", self.uploaders);
+        request.add_param_opt("locales", self.locales);
+        request.add_param_opt("order", self.order);
+        request.add_param_opt("includes", self.includes);
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CoverAttributes {
     pub volume: Option<String>,
@@ -111,7 +107,7 @@ pub struct CoverAttributes {
     pub updated_at: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Cover {
     pub id: CoverId,
@@ -162,7 +158,7 @@ impl UploadCover {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EditCover {
     pub volume: Option<String>,

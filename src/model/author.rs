@@ -6,21 +6,27 @@ use crate::{client::ExtendParams, uuid::AuthorId};
 
 use super::{Order, Relationship};
 
-#[derive(Debug, Clone, Copy, PartialEq, Deserialize, strum::Display)]
+#[derive(Debug, Clone, Copy, PartialEq, Deserialize, Serialize, strum::Display)]
 #[serde(rename_all = "snake_case")]
 #[strum(serialize_all = "snake_case")]
 pub enum AuthorInclude {
     Manga,
 }
 
-#[derive(Default, Debug, Clone, PartialEq)]
+#[derive(Default, Debug, Clone, PartialEq, Deserialize, Serialize)]
 pub struct AuthorFilter {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub limit: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub offset: Option<usize>,
-    pub ids: Vec<AuthorId>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ids: Option<Vec<AuthorId>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    pub order: BTreeMap<String, Order>,
-    pub includes: Vec<AuthorInclude>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub order: Option<BTreeMap<String, Order>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub includes: Option<Vec<AuthorInclude>>,
 }
 
 impl AuthorFilter {
@@ -35,7 +41,7 @@ impl AuthorFilter {
     }
 
     pub fn ids<A: Into<AuthorId>>(mut self, ids: impl IntoIterator<Item = A>) -> Self {
-        self.ids = ids.into_iter().map(|v| v.into()).collect();
+        self.ids = Some(ids.into_iter().map(|v| v.into()).collect());
         self
     }
 
@@ -43,17 +49,12 @@ impl AuthorFilter {
         mut self,
         order: impl IntoIterator<Item = (S, Order)>,
     ) -> Self {
-        self.order = order.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
-        self
-    }
-
-    pub fn include(mut self, state: AuthorInclude) -> Self {
-        self.includes.push(state);
+        self.order = Some(order.into_iter().map(|(k, v)| (k.to_string(), v)).collect());
         self
     }
 
     pub fn includes(mut self, includes: impl IntoIterator<Item = AuthorInclude>) -> Self {
-        self.includes.extend(includes);
+        self.includes = Some(includes.into_iter().collect());
         self
     }
 }
@@ -62,21 +63,13 @@ impl ExtendParams for AuthorFilter {
     fn extend_params(self, request: &mut crate::client::Request) {
         request.add_param_opt("limit", self.limit);
         request.add_param_opt("offset", self.offset);
-        if !self.ids.is_empty() {
-            request.add_param("ids", self.ids);
-        }
-
-        if !self.order.is_empty() {
-            request.add_param("order", self.order);
-        }
-
-        if !self.includes.is_empty() {
-            request.add_param("includes", self.includes);
-        }
+        request.add_param_opt("ids", self.ids);
+        request.add_param_opt("order", self.order);
+        request.add_param_opt("includes", self.includes);
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AuthorAttributes {
     pub name: String,
@@ -93,7 +86,7 @@ pub struct AuthorAttributes {
     pub links: BTreeMap<String, Option<String>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Author {
     pub id: AuthorId,
@@ -102,13 +95,13 @@ pub struct Author {
     pub relationships: Vec<Relationship>,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize)]
+#[derive(Default, Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateAuthor {
     pub name: String,
 
-    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
-    pub biography: BTreeMap<String, String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub biography: Option<BTreeMap<String, String>>,
 
     /* Links */
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -152,13 +145,11 @@ impl CreateAuthor {
         self
     }
 
-    pub fn biography(
+    pub fn biography<S1: std::fmt::Display, S2: std::fmt::Display>(
         mut self,
-        lang: impl std::fmt::Display,
-        biography: impl std::fmt::Display,
+        biography: impl IntoIterator<Item=(S1, S2)>,
     ) -> Self {
-        self.biography
-            .insert(lang.to_string(), biography.to_string());
+        self.biography = Some(biography.into_iter().map(|(a, b)| (a.to_string(), b.to_string())).collect());
         self
     }
 
@@ -228,14 +219,14 @@ impl CreateAuthor {
     }
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Serialize)]
+#[derive(Default, Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateAuthor {
     pub name: String,
     pub version: usize,
 
-    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
-    pub biography: BTreeMap<String, String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub biography: Option<BTreeMap<String, String>>,
 
     /* Links */
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -285,13 +276,11 @@ impl UpdateAuthor {
         self
     }
 
-    pub fn biography(
+    pub fn biography<S1: std::fmt::Display, S2: std::fmt::Display>(
         mut self,
-        lang: impl std::fmt::Display,
-        biography: impl std::fmt::Display,
+        biography: impl IntoIterator<Item=(S1, S2)>,
     ) -> Self {
-        self.biography
-            .insert(lang.to_string(), biography.to_string());
+        self.biography = Some(biography.into_iter().map(|(a, b)| (a.to_string(), b.to_string())).collect());
         self
     }
 

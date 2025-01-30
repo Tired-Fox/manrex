@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::BTreeMap, path::{Path, PathBuf}};
 
 use chrono::{DateTime, Duration, Local, TimeZone};
 use reqwest::header::USER_AGENT;
-use serde::Deserializer;
+use serde::{Deserialize, Deserializer, Serialize};
 
 use crate::{client::{MangaDex, Request}, Error};
 
@@ -45,10 +45,19 @@ impl Token {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Deserialize, Serialize)]
 pub struct Credentials {
     pub(crate) id: Cow<'static, str>,
     pub(crate) secret: Cow<'static, str>,
+}
+
+impl Credentials {
+    pub fn id(&self) -> &str {
+        &self.id
+    }
+    pub fn secret(&self) -> &str {
+        &self.secret
+    }
 }
 
 impl std::fmt::Debug for Credentials {
@@ -100,13 +109,21 @@ struct RefreshToken {
 
 #[derive(Debug, Clone)]
 pub struct OAuth {
-    cache_path: PathBuf,
+    pub(crate) cache_path: PathBuf,
 
     pub(crate) token: Option<Token>,
-    credentials: Credentials,
+    pub(crate) credentials: Credentials,
 }
 
 impl OAuth {
+    pub fn credentials(&self) -> &Credentials {
+        &self.credentials
+    }
+
+    pub fn set_credentials(&mut self, creds: Credentials) {
+        self.credentials = creds;
+    }
+
     pub fn new(creds: Credentials) -> Self {
         Self::new_with_cache(
             creds,
@@ -146,6 +163,13 @@ impl OAuth {
 
     pub fn logged_in(&self) -> bool {
         self.token.is_some()
+    }
+
+    pub fn logout(&self) -> Result<(), Error> {
+        if self.cache_path.join("token.json").exists() {
+            std::fs::remove_file(self.cache_path.join("token.json"))?;
+        }
+        Ok(())
     }
 
     pub fn save(&self) -> Result<(), Error> {

@@ -54,7 +54,9 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     spinner.update(spinners::Dots, "Fetching Manga", spinoff::Color::Yellow);
 
     let id = "6cf34aaa-0799-48b6-a392-dcc5b1c9b8fc";
+    //let id = "7f491e32-3934-4e1a-a8b5-2510aecd40d9"; // Cleric of Decay
     let manga = client.get_manga(id, [MangaInclude::CoverArt]).await?;
+    println!("{manga:#?}");
     let title = manga.attributes.title.get("en").unwrap();
 
     spinner.success(title);

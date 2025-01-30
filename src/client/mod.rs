@@ -11,7 +11,7 @@ mod endpoints;
 
 use crate::{error::ResponseToError, model::at_home::AtHome};
 
-use auth::OAuth;
+use auth::{Credentials, OAuth};
 use reqwest::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use serde_json::Value;
 
