@@ -17,6 +17,7 @@ use crate::{
 // ---[ Upload Endpoints ]---
 impl Client {
     pub async fn get_upload_session(&mut self) -> Result<UploadSession, Error> {
+        self.rate_limit.request("get_upload_session")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -29,6 +30,7 @@ impl Client {
             )
             .send()
             .await?;
+        self.rate_limit.update("get_upload_session", &res)?;
 
         res.manga_dex_template::<UploadSession>().await
     }
@@ -38,6 +40,7 @@ impl Client {
         groups: impl IntoIterator<Item = S>,
         manga: impl Into<MangaId>,
     ) -> Result<UploadSession, Error> {
+        self.rate_limit.request("start_upload_session")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -55,6 +58,7 @@ impl Client {
             }))
             .send()
             .await?;
+        self.rate_limit.update("start_upload_session", &res)?;
 
         res.manga_dex_template::<UploadSession>().await
     }
@@ -64,6 +68,7 @@ impl Client {
         id: impl Into<ChapterId>,
         version: usize,
     ) -> Result<UploadSession, Error> {
+        self.rate_limit.request("start_edit_chapter")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -81,6 +86,7 @@ impl Client {
             }))
             .send()
             .await?;
+        self.rate_limit.update("start_edit_chapter", &res)?;
 
         res.manga_dex_template::<UploadSession>().await
     }
@@ -90,6 +96,7 @@ impl Client {
         session_id: impl Into<UploadSessionId>,
         file: impl AsRef<Path>,
     ) -> Result<FileUploadSession, Error> {
+        self.rate_limit.request("upload_image")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -104,6 +111,7 @@ impl Client {
             .multipart(multipart::Form::new().file("file", file).await?)
             .send()
             .await?;
+        self.rate_limit.update("upload_image", &res)?;
 
         res.manga_dex_response::<Data<FileUploadSession>>().await
     }
@@ -114,12 +122,14 @@ impl Client {
         chapter_draft: ChapterDraft,
         page_order: impl IntoIterator<Item = S>,
     ) -> Result<FileUploadSession, Error> {
+        self.rate_limit.request("commit_upload_session")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
         let res = Request::post((MangaDex::Api, Endpoint::Upload))
             .join(session_id.into().as_ref())
+            .join("commit")
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
             .header(
                 AUTHORIZATION,
@@ -131,6 +141,7 @@ impl Client {
             }))
             .send()
             .await?;
+        self.rate_limit.update("commit_upload_session", &res)?;
 
         res.manga_dex_response::<Data<FileUploadSession>>().await
     }
@@ -139,6 +150,7 @@ impl Client {
         &mut self,
         session_id: impl Into<UploadSessionId>,
     ) -> Result<(), Error> {
+        self.rate_limit.request("abandon_upload_session")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -152,6 +164,7 @@ impl Client {
             )
             .send()
             .await?;
+        self.rate_limit.update("abandon_upload_session", &res)?;
 
         res.manga_dex_response::<()>().await
     }
@@ -161,6 +174,7 @@ impl Client {
         session_id: impl Into<UploadSessionId>,
         file_session_id: impl Into<UploadSessionId>,
     ) -> Result<(), Error> {
+        self.rate_limit.request("delete_uploaded_image")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -175,6 +189,7 @@ impl Client {
             )
             .send()
             .await?;
+        self.rate_limit.update("delete_uploaded_image", &res)?;
 
         res.manga_dex_response::<()>().await
     }
@@ -184,6 +199,7 @@ impl Client {
         session_id: impl Into<UploadSessionId>,
         file_session_ids: impl IntoIterator<Item = S>,
     ) -> Result<(), Error> {
+        self.rate_limit.request("delete_uploaded_images")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -204,6 +220,7 @@ impl Client {
             )
             .send()
             .await?;
+        self.rate_limit.update("delete_uploaded_images", &res)?;
 
         res.manga_dex_response::<()>().await
     }
@@ -213,6 +230,7 @@ impl Client {
         manga: impl Into<MangaId>,
         locale: impl std::fmt::Display,
     ) -> Result<bool, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }

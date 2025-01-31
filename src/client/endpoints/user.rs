@@ -14,6 +14,7 @@ impl Client {
         &mut self,
         filter: impl Optional<UserFilter, M>,
     ) -> Result<Paginated<Vec<User>>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -32,6 +33,7 @@ impl Client {
     }
 
     pub async fn get_user(&mut self, id: impl Into<UserId>) -> Result<User, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -50,6 +52,7 @@ impl Client {
     }
 
     pub async fn get_user_details(&mut self) -> Result<User, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }

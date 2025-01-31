@@ -16,6 +16,7 @@ impl Client {
         &mut self,
         id: impl Into<ChapterId>,
     ) -> Result<BTreeMap<ChapterId, Comments>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -39,6 +40,7 @@ impl Client {
         &mut self,
         chapters: impl IntoIterator<Item = S>,
     ) -> Result<BTreeMap<ChapterId, Comments>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -65,6 +67,7 @@ impl Client {
         &mut self,
         id: impl Into<GroupId>,
     ) -> Result<BTreeMap<GroupId, Comments>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -88,6 +91,7 @@ impl Client {
         &mut self,
         groups: impl IntoIterator<Item = S>,
     ) -> Result<BTreeMap<GroupId, Comments>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -114,6 +118,7 @@ impl Client {
         &mut self,
         id: impl Into<MangaId>,
     ) -> Result<BTreeMap<MangaId, Comments>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -137,6 +142,7 @@ impl Client {
         &mut self,
         manga: impl IntoIterator<Item = S>,
     ) -> Result<BTreeMap<MangaId, Comments>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }

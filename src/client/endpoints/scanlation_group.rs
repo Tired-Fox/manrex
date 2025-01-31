@@ -14,6 +14,7 @@ impl Client {
         &mut self,
         filter: impl Optional<ScanlationGroupFilter, M>,
     ) -> Result<Paginated<Vec<ScanlationGroup>>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -36,6 +37,7 @@ impl Client {
         &mut self,
         group: CreateScanlationGroup,
     ) -> Result<ScanlationGroup, Error> {
+        self.rate_limit.request("create_scanlation_group")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -49,6 +51,7 @@ impl Client {
             .json(&group)
             .send()
             .await?;
+        self.rate_limit.update("create_scanlation_group", &res)?;
 
         res.manga_dex_response::<Data<ScanlationGroup>>().await
     }
@@ -58,6 +61,7 @@ impl Client {
         id: impl Into<GroupId>,
         includes: impl Optional<Vec<ScanlationGroupInclude>, M>,
     ) -> Result<ScanlationGroup, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -81,6 +85,7 @@ impl Client {
         id: impl Into<GroupId>,
         group: UpdateScanlationGroup,
     ) -> Result<ScanlationGroup, Error> {
+        self.rate_limit.request("update_scanlation_group")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -95,11 +100,13 @@ impl Client {
             .json(&group)
             .send()
             .await?;
+        self.rate_limit.update("update_scanlation_group", &res)?;
 
         res.manga_dex_response::<Data<ScanlationGroup>>().await
     }
 
     pub async fn delete_scanlation_group(&mut self, id: impl Into<GroupId>) -> Result<(), Error> {
+        self.rate_limit.request("delete_scanlation_group")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -113,11 +120,13 @@ impl Client {
             )
             .send()
             .await?;
+        self.rate_limit.update("delete_scanlation_group", &res)?;
 
         res.manga_dex_response::<()>().await
     }
 
     pub async fn follow_scanlation_group(&mut self, id: impl Into<GroupId>) -> Result<(), Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -137,6 +146,7 @@ impl Client {
     }
 
     pub async fn unfollow_scanlation_group(&mut self, id: impl Into<GroupId>) -> Result<(), Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }

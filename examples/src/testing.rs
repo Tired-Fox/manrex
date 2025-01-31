@@ -1,15 +1,14 @@
-use std::path::PathBuf;
+use std::{collections::VecDeque, path::PathBuf, sync::Arc};
 
-use futures_util::StreamExt;
 use manrex::{
     auth::{Credentials, OAuth},
     model::{chapter::ChapterFilter, manga::MangaInclude},
-    Client,
+    Client, Error,
 };
 use spinoff::{spinners, Spinner};
-use tokio::io::AsyncWriteExt;
+use tokio::sync::Mutex;
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads=6)]
 pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut spinner = Spinner::new(
         spinners::Dots,
@@ -29,21 +28,9 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             spinoff::Color::Yellow,
         );
 
-        // Prompt for username and password to "login" and
-        // authenticate while fetching the token
-
-        let username: String = dialoguer::Input::new()
-            .with_prompt("Enter your MangaDex username:")
-            .interact()?;
-
-        let password: String = dialoguer::Password::new()
-            .with_prompt("Enter your MangaDex password:")
-            .interact()?;
-
         auth.login_with(
-            //std::env::var("MANGADEX_USERNAME")?,
-            //std::env::var("MANGADEX_PASSWORD")?,
-            username, password,
+            std::env::var("MANGADEX_USERNAME")?,
+            std::env::var("MANGADEX_PASSWORD")?,
         )
         .await?;
     }
@@ -56,7 +43,7 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let id = "6cf34aaa-0799-48b6-a392-dcc5b1c9b8fc";
     //let id = "7f491e32-3934-4e1a-a8b5-2510aecd40d9"; // Cleric of Decay
     let manga = client.get_manga(id, [MangaInclude::CoverArt]).await?;
-    println!("{manga:#?}");
+    println!("{}", serde_json::to_string_pretty(&manga)?);
     let title = manga.attributes.title.get("en").unwrap();
 
     spinner.success(title);
@@ -68,21 +55,17 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
 
     {
-        let (mime, mut stream) = manga.get_cover_art(None)?.fetch().await?;
+        let stream = manga.get_cover_art(None)?.fetch().await?;
+        let ext = if stream.mime.as_str() == "image/jpeg" { ".jpg" } else { ".png" };
+
         let mut file = tokio::fs::OpenOptions::new()
             .truncate(true)
             .create(true)
             .write(true)
-            .open(if let Some("image/jpeg") = mime.as_deref() {
-                base.join("cover.jpg")
-            } else {
-                base.join("cover.png")
-            })
+            .open(base.join(format!("cover{ext}")))
             .await?;
 
-        while let Some(Ok(chunk)) = stream.next().await {
-            file.write_all(chunk.as_ref()).await?;
-        }
+        stream.stream_to(&mut file).await?;
     }
 
     spinner.update(spinners::Dots, "Fetching Chapters", spinoff::Color::Yellow);
@@ -107,36 +90,72 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .clone()
                 .unwrap_or("0".to_string())
         ));
+
         if !path.exists() {
             std::fs::create_dir_all(&path)?;
         }
 
-        for (j, image) in server.saver_images().iter().enumerate() {
+        // Use async tasks to split up the workload of fetching and downloading the images.
+        //
+        // 5 images will be downloaded at any given moment.
+        let queue = Arc::new(Mutex::new(server.saver_images().into_iter().enumerate().collect::<VecDeque<_>>()));
+        let (done, mut dout) = tokio::sync::mpsc::unbounded_channel::<Result<(), Error>>();
+        for _ in 0..5 {
+            let queue = queue.clone();
+            let done = done.clone();
+            let path = path.clone();
+            tokio::spawn(async move {
+                loop {
+                    let next = queue.lock().await.pop_front();
+                    match next {
+                        None => break,
+                        Some((index, image)) => {
+                            match image.fetch().await {
+                                Ok(stream) => {
+                                    let ext = if stream.mime.as_str() == "image/jpeg" { ".jpg" } else { ".png" };
+                                    match  tokio::fs::OpenOptions::new()
+                                        .truncate(true)
+                                        .create(true)
+                                        .write(true)
+                                        .open(path.join(format!("page-{index}{ext}")))
+                                    .await
+                                    {
+                                        Err(err) => {
+                                            let _ = done.send(Err(Error::from(err)));
+                                        },
+                                        Ok(mut file) => match stream.stream_to(&mut file).await {
+                                            Err(err) => {
+                                                let _ = done.send(Err(err));
+                                            },
+                                            Ok(_) => {
+                                                let _ = done.send(Ok(()));
+                                            } 
+                                        }
+                                    }
+                                },
+                                Err(err) => {
+                                    let _ = done.send(Err(err));
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        let mut finished = 0;
+        while let Some(done) = dout.recv().await {
+            done?;
+
+            finished += 1;
             spinner.update(
                 spinners::Dots,
-                format!("Downloading chapter 0 [{j}/{}]", chapter.attributes.pages),
+                format!("Downloading chapter 0 [{finished}/{}]", chapter.attributes.pages),
                 spinoff::Color::Yellow,
             );
-            let (mime, mut stream) = image.fetch().await?;
-            {
-                let mut file = tokio::fs::OpenOptions::new()
-                    .truncate(true)
-                    .create(true)
-                    .write(true)
-                    .open(path.join(format!(
-                        "page-{j}.{}",
-                        if let Some("image/jpeg") = mime.as_deref() {
-                            "jpg"
-                        } else {
-                            "png"
-                        }
-                    )))
-                    .await?;
 
-                // Stream chunks of bytes from the image response to the file
-                while let Some(Ok(chunk)) = stream.next().await {
-                    file.write_all(chunk.as_ref()).await?;
-                }
+            if finished >= chapter.attributes.pages {
+                break;
             }
         }
         spinner.success("Chapter 0");

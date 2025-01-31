@@ -17,6 +17,7 @@ impl Client {
         &mut self,
         filter: impl Optional<MangaFilter, M>,
     ) -> Result<Paginated<Vec<Manga>>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -40,6 +41,7 @@ impl Client {
         translated_languages: impl Optional<Vec<String>, M1>,
         groups: impl Optional<Vec<GroupId>, M2>,
     ) -> Result<BTreeMap<String, Volume>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -66,6 +68,7 @@ impl Client {
         id: impl Into<MangaId>,
         includes: impl Optional<Vec<MangaInclude>, M>,
     ) -> Result<Manga, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -85,6 +88,7 @@ impl Client {
     }
 
     pub async fn create_manga(&mut self, manga: CreateManga) -> Result<Manga, Error> {
+        self.rate_limit.request("create_manga")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -98,11 +102,13 @@ impl Client {
             .json(&manga)
             .send()
             .await?;
+        self.rate_limit.update("create_manga", &res)?;
 
         res.manga_dex_response::<Data<Manga>>().await
     }
 
     pub async fn follow_manga(&mut self, id: impl Into<MangaId>) -> Result<(), Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -126,6 +132,7 @@ impl Client {
         id: impl Into<MangaId>,
         manga: UpdateManga,
     ) -> Result<Manga, Error> {
+        self.rate_limit.request("update_manga")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -140,11 +147,13 @@ impl Client {
             .json(&manga)
             .send()
             .await?;
+        self.rate_limit.update("update_manga", &res)?;
 
         res.manga_dex_response::<Data<Manga>>().await
     }
 
     pub async fn delete_manga(&mut self, id: impl Into<MangaId>) -> Result<(), Error> {
+        self.rate_limit.request("delete_manga")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -158,11 +167,13 @@ impl Client {
             )
             .send()
             .await?;
+        self.rate_limit.update("delete_manga", &res)?;
 
         res.manga_dex_response::<()>().await
     }
 
     pub async fn unfollow_manga(&mut self, id: impl Into<MangaId>) -> Result<(), Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -186,6 +197,7 @@ impl Client {
         id: impl Into<MangaId>,
         filter: impl Optional<FeedFilter, M>,
     ) -> Result<Paginated<Vec<Chapter>>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -209,6 +221,7 @@ impl Client {
         &mut self,
         filter: impl Optional<RandomMangaFilter, M>,
     ) -> Result<Manga, Error> {
+        self.rate_limit.request("get_random_manga")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -223,11 +236,13 @@ impl Client {
             .params_opt(filter.optional())
             .send()
             .await?;
+        self.rate_limit.update("get_random_manga", &res)?;
 
         res.manga_dex_response::<Data<Manga>>().await
     }
 
     pub async fn get_manga_tag_list(&mut self) -> Result<Paginated<Vec<Tag>>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -249,6 +264,7 @@ impl Client {
         &mut self,
         status: impl Optional<Status, M>,
     ) -> Result<BTreeMap<String, Status>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -272,6 +288,7 @@ impl Client {
         &mut self,
         id: impl Into<MangaId>,
     ) -> Result<Status, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -295,6 +312,7 @@ impl Client {
         id: impl Into<MangaId>,
         status: impl Optional<Status, M>,
     ) -> Result<Status, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -321,6 +339,7 @@ impl Client {
         id: impl Into<MangaId>,
         includes: impl Optional<Vec<MangaInclude>, M>,
     ) -> Result<Status, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -345,6 +364,7 @@ impl Client {
         id: impl Into<MangaId>,
         version: usize,
     ) -> Result<Manga, Error> {
+        self.rate_limit.request("submit_manga_draft")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -363,6 +383,7 @@ impl Client {
             }))
             .send()
             .await?;
+        self.rate_limit.update("submit_manga_draft", &res)?;
 
         res.manga_dex_response::<Data<Manga>>().await
     }
@@ -371,6 +392,7 @@ impl Client {
         &mut self,
         filter: impl Optional<DraftFilter, M>,
     ) -> Result<Manga, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -394,6 +416,7 @@ impl Client {
         id: impl Into<MangaId>,
         includes: impl Optional<Vec<MangaInclude>, M>,
     ) -> Result<Paginated<Vec<MangaRelation>>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -420,6 +443,7 @@ impl Client {
         target: impl Into<MangaId>,
         relation: Relation,
     ) -> Result<MangaRelation, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -447,6 +471,7 @@ impl Client {
         id: impl Into<MangaId>,
         target: impl Into<MangaId>,
     ) -> Result<(), Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }

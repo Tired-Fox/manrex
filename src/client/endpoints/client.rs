@@ -16,6 +16,7 @@ impl Client {
         &mut self,
         filters: impl Optional<ClientFilter, M>,
     ) -> Result<Paginated<Vec<ApiClient>>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -39,6 +40,7 @@ impl Client {
         name: impl std::fmt::Display,
         description: impl Optional<String, M>,
     ) -> Result<ApiClient, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -70,6 +72,7 @@ impl Client {
 
     /// Delete a client
     pub async fn delete_client(&mut self, id: impl Into<ClientId>) -> Result<(), Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -94,6 +97,7 @@ impl Client {
         version: usize,
         description: impl std::fmt::Display,
     ) -> Result<ApiClient, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -121,6 +125,7 @@ impl Client {
         id: impl Into<ClientId>,
         includes: impl Optional<Vec<ClientInclude>, M>,
     ) -> Result<ApiClient, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -144,6 +149,7 @@ impl Client {
         &mut self,
         id: impl Into<ClientId>,
     ) -> Result<String, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -167,6 +173,7 @@ impl Client {
         &mut self,
         id: impl Into<ClientId>,
     ) -> Result<String, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }

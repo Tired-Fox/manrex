@@ -14,6 +14,7 @@ impl Client {
         &mut self,
         filters: impl Optional<ChapterFilter, M>,
     ) -> Result<Paginated<Vec<Chapter>>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -32,6 +33,7 @@ impl Client {
     }
 
     pub async fn get_chapter(&mut self, id: impl Into<ChapterId>) -> Result<Chapter, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -54,6 +56,7 @@ impl Client {
         id: impl Into<ChapterId>,
         chapter: UpdateChapter,
     ) -> Result<Chapter, Error> {
+        self.rate_limit.request("update_chapter")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -68,11 +71,13 @@ impl Client {
             .json(&chapter)
             .send()
             .await?;
+        self.rate_limit.update("update_chapter", &res)?;
 
         res.manga_dex_response::<Data<Chapter>>().await
     }
 
     pub async fn delete_chapter(&mut self, id: impl Into<ChapterId>) -> Result<(), Error> {
+        self.rate_limit.request("delete_chapter")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -86,6 +91,7 @@ impl Client {
             )
             .send()
             .await?;
+        self.rate_limit.update("delete_chapter", &res)?;
 
         res.manga_dex_response::<()>().await
     }

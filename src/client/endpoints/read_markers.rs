@@ -19,6 +19,7 @@ impl Client {
     ) -> Result<Vec<ChapterId>, Error> {
         let id = manga.into();
 
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -45,6 +46,7 @@ impl Client {
         update_history: impl Optional<bool, M1>,
         chapter_ids_unread: impl Optional<Vec<ChapterId>, M1>,
     ) -> Result<(), Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -86,6 +88,7 @@ impl Client {
         &mut self,
         ids: Vec<S>,
     ) -> Result<Vec<ChapterId>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -113,6 +116,7 @@ impl Client {
         &mut self,
         ids: Vec<S>,
     ) -> Result<BTreeMap<MangaId, Vec<ChapterId>>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -141,6 +145,7 @@ impl Client {
     pub async fn get_read_history<S: std::fmt::Display, M>(
         &mut self,
     ) -> Result<Vec<History>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }

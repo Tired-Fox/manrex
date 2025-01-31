@@ -17,6 +17,7 @@ impl Client {
         &mut self,
         manga: impl Into<MangaId>,
     ) -> Result<BTreeMap<String, Rating>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -40,6 +41,7 @@ impl Client {
         id: impl Into<MangaId>,
         rating: usize,
     ) -> Result<(), Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -61,6 +63,7 @@ impl Client {
     }
 
     pub async fn delete_rating(&mut self, id: impl Into<MangaId>) -> Result<(), Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }

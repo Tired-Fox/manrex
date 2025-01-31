@@ -152,6 +152,7 @@ impl From<serde_json_path_to_error::Error> for Error {
 pub(crate) trait ResponseToError<R> {
     fn manga_dex_response<T: DeserializeOwned + IntoData<R>>(self) -> impl Future<Output=Result<R, Error>>;
     fn manga_dex_template<S: DeserializeOwned + IntoData<R>>(self) -> impl Future<Output=Result<R, Error>>;
+    fn manga_dex_response_empty(self) -> impl Future<Output=Result<(), Error>>;
 }
 
 impl<R> ResponseToError<R> for reqwest::Response {
@@ -163,6 +164,17 @@ impl<R> ResponseToError<R> for reqwest::Response {
         } else {
             let response: MangaDexResponse<T> = self.json_with_error_path().await?;
             response.ok().map(|v| v.into_data())
+        }
+    }
+
+    async fn manga_dex_response_empty(self) -> Result<(), Error> {
+        if self.status() == StatusCode::UNAUTHORIZED {
+            Err(Error::Authorization)
+        } else if self.status().is_redirection() {
+            Err(Error::http(self.status(), self.status().canonical_reason().unwrap_or(self.status().as_str())))
+        } else {
+            let _ = self.bytes().await;
+            Ok(())
         }
     }
 

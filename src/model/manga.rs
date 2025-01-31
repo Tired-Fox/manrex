@@ -1,6 +1,5 @@
 use std::{
     collections::{BTreeMap, HashSet},
-    path::PathBuf,
 };
 
 use serde::{Deserialize, Serialize};
@@ -332,7 +331,7 @@ impl Manga {
         Ok(Image {
             url: format!("{}/covers/{manga_id}/{file_name}", MangaDex::Uploads),
             expires: None,
-            file_name: Some(PathBuf::from(file_name)),
+            file_name: file_name,
         })
     }
 }

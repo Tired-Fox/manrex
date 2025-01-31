@@ -14,6 +14,7 @@ impl Client {
         &mut self,
         filters: impl Optional<AuthorFilter, M>,
     ) -> Result<Paginated<Vec<Author>>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -32,6 +33,7 @@ impl Client {
     }
 
     pub async fn create_author(&mut self, author: CreateAuthor) -> Result<Author, Error> {
+        self.rate_limit.request("create_author")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -45,6 +47,7 @@ impl Client {
             .json(&author)
             .send()
             .await?;
+        self.rate_limit.update("create_author", &res)?;
 
         res.manga_dex_response::<Data<Author>>().await
     }
@@ -54,6 +57,7 @@ impl Client {
         id: impl Into<AuthorId>,
         includes: impl Optional<Vec<AuthorInclude>, M>,
     ) -> Result<Author, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -77,6 +81,7 @@ impl Client {
         id: impl Into<AuthorId>,
         author: UpdateAuthor,
     ) -> Result<Author, Error> {
+        self.rate_limit.request("update_author")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -91,11 +96,13 @@ impl Client {
             .json(&author)
             .send()
             .await?;
+        self.rate_limit.update("update_author", &res)?;
 
         res.manga_dex_response::<Data<Author>>().await
     }
 
     pub async fn delete_author(&mut self, id: impl Into<AuthorId>) -> Result<(), Error> {
+        self.rate_limit.request("delete_author")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -109,6 +116,7 @@ impl Client {
             )
             .send()
             .await?;
+        self.rate_limit.update("delete_author", &res)?;
 
         res.manga_dex_response::<()>().await
     }

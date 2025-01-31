@@ -14,6 +14,7 @@ impl Client {
         &mut self,
         filter: impl Optional<CoverArtFilter, M>,
     ) -> Result<Paginated<Vec<Cover>>, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -36,10 +37,12 @@ impl Client {
         id: impl Into<CoverId>,
         cover: UploadCover,
     ) -> Result<Cover, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
 
+        self.rate_limit.request("upload_cover")?;
         let res = Request::post((MangaDex::Api, Endpoint::Cover))
             .join(id.into().as_ref())
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
@@ -50,6 +53,7 @@ impl Client {
             .multipart(cover.into())
             .send()
             .await?;
+        self.rate_limit.update("upload_cover", &res)?;
 
         res.manga_dex_response::<Data<Cover>>().await
     }
@@ -59,6 +63,7 @@ impl Client {
         id: impl Into<CoverId>,
         includes: impl Optional<Vec<CoverInclude>, M>,
     ) -> Result<Cover, Error> {
+        self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -82,6 +87,7 @@ impl Client {
         id: impl Into<CoverId>,
         cover: EditCover,
     ) -> Result<Cover, Error> {
+        self.rate_limit.request("edit_cover")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -96,11 +102,13 @@ impl Client {
             .json(&cover)
             .send()
             .await?;
+        self.rate_limit.update("edit_cover", &res)?;
 
         res.manga_dex_response::<Data<Cover>>().await
     }
 
     pub async fn delete_cover(&mut self, id: impl Into<CoverId>) -> Result<(), Error> {
+        self.rate_limit.request("delete_cover")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
         }
@@ -114,6 +122,7 @@ impl Client {
             )
             .send()
             .await?;
+        self.rate_limit.update("delete_cover", &res)?;
 
         res.manga_dex_response::<()>().await
     }

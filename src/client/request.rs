@@ -359,6 +359,7 @@ impl Request {
             req = req.body(body);
         }
 
-        Ok(req.send().await?)
+        let res = req.send().await?;
+        Ok(res)
     }
 }

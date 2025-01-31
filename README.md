@@ -14,11 +14,11 @@ This project requests that all users adhere to MangaDex's [Acceptable Usage Poli
 
 ## Features
 
-- Full `MangaDex` public API implementation (within reason) found [here](https://api.mangadex.org/docs/swagger.html#/) with it's docs found [here](https://api.mangadex.org/docs/)
-- Opt-in client side rate limiting to avoid hitting the API's automatic rate limiting
-- Caching of endpoints like the `/at-home` api that gives limited lifetime urls and endpoints. ([ref](https://api.mangadex.org/docs/04-chapter/retrieving-chapter/#howto))
-- Automatic image success/failure reporting ([ref](https://api.mangadex.org/docs/04-chapter/retrieving-chapter/#mangadexhome-load-successes-failures-and-retries))
-- Generic enough client that can be used in web, application, tui, cli, and other environments.
+- [x] Full `MangaDex` public API implementation (within reason) found [here](https://api.mangadex.org/docs/swagger.html#/) with it's docs found [here](https://api.mangadex.org/docs/)
+- [x] Automatic client side rate limiting. This will stop a rate limit request before it is sent. At least one rate limited response is captured before this activates.
+- [ ] Automatic image success/failure reporting ([ref](https://api.mangadex.org/docs/04-chapter/retrieving-chapter/#mangadexhome-load-successes-failures-and-retries))
+    - Ref: https://api.mangadex.org/docs/04-chapter/retrieving-chapter/#mangadexhome-load-successes-failures-and-retries
+- [ ] Helper methods to help collect/fetch additional information. Ex. Cover Art from a Manga struct that was fetched with `MangaInclude::CoverArt`.
 
 ## Rate Limiting
 

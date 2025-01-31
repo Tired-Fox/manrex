@@ -18,7 +18,10 @@ pub trait JsonWithErrorPath {
 
 impl JsonWithErrorPath for reqwest::Response {
     async fn json_with_error_path<T: serde::de::DeserializeOwned>(self) -> Result<T, Error> {
-        let full = self.bytes().await?;
-        Ok(serde_json_path_to_error::from_slice(&full)?)
+        let mut full = self.bytes().await?.to_vec();
+        if full.is_empty() {
+            full.extend(b"null");
+        }
+        Ok(serde_json::from_slice(&full)?)
     }
 }

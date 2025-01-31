@@ -11,6 +11,7 @@ pub mod author;
 pub mod chapter;
 pub mod client;
 pub mod cover;
+pub mod forum;
 mod image;
 pub mod manga;
 pub mod rating;

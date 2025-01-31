@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use chrono::{DateTime, Duration, Local};
 use serde::{Deserialize, Serialize};
 
@@ -35,7 +33,7 @@ impl AtHome {
             .map(|v| Image {
                 url: format!("{}/data/{}/{v}", self.base_url, self.chapter.hash),
                 expires: Some(self.expires),
-                file_name: Some(PathBuf::from(v)),
+                file_name: v.clone(),
             })
             .collect()
     }
@@ -48,7 +46,7 @@ impl AtHome {
             .map(|v| Image {
                 url: format!("{}/data-saver/{}/{v}", self.base_url, self.chapter.hash),
                 expires: Some(self.expires),
-                file_name: Some(PathBuf::from(v)),
+                file_name: v.to_string(),
             })
             .collect()
     }
@@ -63,4 +61,19 @@ pub struct AtHomeChapter {
     pub data: Vec<String>,
     /// Lower resolution images
     pub data_saver: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AtHomeImageReport {
+    /// Full ULR of the image (including `https://`)
+    pub url: String,
+    /// true if the image was successfully retrieved, false otherwise
+    pub succes: bool,
+    /// Wither there was a `X-Cache` header that starts with `HIT`
+    pub cached: bool,
+    /// Total size (in bytes) of the retrieved image. This includes what was recieved if it failed.
+    pub bytes: usize,
+    /// Time to aquire entire image. **NOT** Time to first byte.
+    pub duration: u128,
 }

@@ -8,10 +8,12 @@
 pub(crate) mod request;
 pub mod auth;
 mod endpoints;
+mod rate_limit;
 
-use crate::{error::ResponseToError, model::at_home::AtHome};
+use crate::{error::ResponseToError, model::{at_home::{AtHome, AtHomeImageReport}, forum::{Resource, Thread}, Data}, Uuid};
 
-use auth::{Credentials, OAuth};
+use auth::OAuth;
+use rate_limit::RateLimiter;
 use reqwest::header::{ACCEPT, AUTHORIZATION, USER_AGENT};
 use serde_json::Value;
 
@@ -21,46 +23,10 @@ pub use request::{Request, ExtendParams};
 pub static CLIENT_NAME: &str = std::env!("CARGO_PKG_NAME");
 pub static CLIENT_VERSION: &str = std::env!("CARGO_PKG_VERSION");
 
-//#[derive(Default, Debug, Clone, Copy, PartialEq)]
-//pub struct Rate {
-//    /// X-RateLimit-Limit
-//    limit: usize,
-//    /// X-RateLimit-Remaining
-//    remaining: usize,
-//    /// X-RateLimit-Retry-After: unix timestamp
-//    retry_after: chrono::DateTime<chrono::Local>,
-//}
-//
-///// Per Endpoint Rate Limiting
-//#[derive(Debug, Default)]
-//pub struct RateLimiter {
-//    limits: BTreeMap<Endpoint, Rate>
-//}
-//
-//impl RateLimiter {
-//    pub fn request(&mut self, endpoint: Endpoint) -> Result<(), Error> {
-//        match self.limits.get(&endpoint) {
-//            Some(rate) if rate.remaining.saturating_sub(1) == 0 && chrono::Local::now() < rate.retry_after => {
-//                return Err(Error::RateLimit)
-//            },
-//            _ => {}
-//        }
-//        Ok(())
-//    }
-//
-//    pub fn update(&mut self, endpoint: Endpoint, rate: Option<Rate>) {
-//        match rate {
-//            Some(rate) => { self.limits.insert(endpoint, rate); },
-//            None => if self.limits.contains_key(&endpoint) {
-//                self.limits.remove(&endpoint);
-//            },
-//        }
-//    }
-//}
-
 pub enum MangaDex {
     Api,
-    DevApi,
+    ApiDev,
+    ApiNetwork,
     Auth,
     Uploads,
 }
@@ -68,7 +34,8 @@ impl std::fmt::Display for MangaDex {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Api => write!(f, "https://api.mangadex.org"),
-            Self::DevApi => write!(f, "https://api.mangadex.dev"),
+            Self::ApiDev => write!(f, "https://api.mangadex.dev"),
+            Self::ApiNetwork => write!(f, "https://api.mangadex.network"),
             Self::Auth => write!(f, "https://auth.mangadex.org"),
             Self::Uploads => write!(f, "https://uploads.mangadex.org"),
         }
@@ -83,6 +50,7 @@ pub enum Endpoint {
     Chapter,
     Author,
     Captcha,
+    Forums,
     Cover,
     Manga,
     Rating,
@@ -103,6 +71,7 @@ impl std::fmt::Display for Endpoint {
             Self::Chapter => write!(f, "chapter"),
             Self::Author => write!(f, "author"),
             Self::Captcha => write!(f, "captcha"),
+            Self::Forums => write!(f, "forums"),
             Self::Cover => write!(f, "cover"),
             Self::Manga => write!(f, "manga"),
             Self::Rating => write!(f, "rating"),
@@ -115,20 +84,6 @@ impl std::fmt::Display for Endpoint {
         }
     }
 }
-
-//pub struct Cache<T: Clone> {
-//    expires: DateTime<Local>,
-//    data: T
-//}
-//
-//impl<T: Clone> Cache<T> {
-//    pub fn new(data: T, duration: Duration) -> Self {
-//        Self {
-//            expires: Local::now() + duration,
-//            data
-//        }
-//    }
-//}
 
 /// Allows for any type that implements `Into` for the inner type to be automatically cast.
 ///
@@ -170,14 +125,15 @@ impl<A: Into<T>, T> Optional<T, IntoOptionalConcrete> for A {
 
 pub struct Client {
     pub(crate) oauth: OAuth,
-    //rate_limit: RateLimiter,
+    rate_limit: RateLimiter,
     //at_home_cache: BTreeMap<String, Cache<Chapter>>
 }
 
 impl Client {
     pub fn new(oauth: OAuth) -> Self {
         Self {
-            oauth
+            oauth,
+            rate_limit: RateLimiter::default(),
         }
     }
 
@@ -207,6 +163,8 @@ impl Client {
             self.oauth.refresh().await?;
         }
 
+        self.rate_limit.request("get_at_home_server")?;
+
         let res = Request::get((MangaDex::Api, Endpoint::AtHome))
             .join(chapter.to_string())
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
@@ -215,7 +173,19 @@ impl Client {
             .send()
             .await?;
 
+        self.rate_limit.update("get_at_home_server", &res)?;
+
         res.manga_dex_response::<AtHome>().await
+    }
+
+    pub async fn at_home_image_report(&self, report: AtHomeImageReport) -> Result<(), Error> {
+        let res = Request::post((MangaDex::ApiNetwork, Endpoint::Report))
+            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
+            .json(&report)
+            .send()
+            .await?;
+
+        res.manga_dex_response::<()>().await
     }
 
     /// Can use this endpoint to solve captchas explicitly.
@@ -227,6 +197,7 @@ impl Client {
             self.oauth.refresh().await?;
         }
 
+        self.rate_limit.request("solve_captcha")?;
         let res = Request::post((MangaDex::Api, Endpoint::Captcha))
             .join("solve")
             .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
@@ -234,7 +205,30 @@ impl Client {
             .json(&Value::String(challenge.to_string()))
             .send()
             .await?;
+        self.rate_limit.update("solve_captcha", &res)?;
 
         res.manga_dex_response::<()>().await
+    }
+
+
+    pub async fn create_forum_thread(&mut self, id: impl Into<Uuid>, typ: Resource) -> Result<Thread, Error> {
+        if self.oauth().expired()? {
+            self.oauth.refresh().await?;
+        }
+
+        self.rate_limit.request("create_forum_thread")?;
+        let res = Request::post((MangaDex::Api, Endpoint::Forums))
+            .join("thread")
+            .header(USER_AGENT, format!("{CLIENT_NAME}/{CLIENT_VERSION}"))
+            .header(AUTHORIZATION, format!("Bearer {}", self.oauth().access_token()))
+            .json(&serde_json::json!({
+                "type": typ,
+                "id": id.into(),
+            }))
+            .send()
+            .await?;
+        self.rate_limit.update("create_forum_thread", &res)?;
+
+        res.manga_dex_response::<Data<Thread>>().await
     }
 }

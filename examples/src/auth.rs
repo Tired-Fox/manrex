@@ -1,5 +1,5 @@
 use manrex::{
-    auth::{Credentials, OAuth}, model::manga::MangaFilter, Client
+    auth::{Credentials, OAuth}, Client
 };
 
 #[tokio::main]
@@ -14,11 +14,8 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .await?;
     }
 
-    let mut client = Client::new(auth);
-
-    let title = "Cleric of Decay";
-    let manga = client.list_manga(MangaFilter::default().title(title)).await?;
-    println!("{manga:#?}");
+    let client = Client::new(auth);
+    println!("Authorized: {}", client.ping().await.is_ok());
 
     Ok(())
 }
