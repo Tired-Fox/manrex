@@ -13,7 +13,7 @@ impl Client {
     pub async fn list_covers<M>(
         &mut self,
         filter: impl Optional<CoverArtFilter, M>,
-    ) -> Result<Paginated<Vec<Cover>>, Error> {
+    ) -> Result<Paginated<Cover>, Error> {
         self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
@@ -29,7 +29,7 @@ impl Client {
             .send()
             .await?;
 
-        res.manga_dex_response::<Paginated<Vec<Cover>>>().await
+        res.manga_dex_response::<Paginated<Cover>>().await
     }
 
     pub async fn upload_cover(

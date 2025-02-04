@@ -57,6 +57,7 @@ pub enum Endpoint {
     User,
     Upload,
     Report,
+    List,
     Group,
     Settings,
     Statistics,
@@ -81,6 +82,7 @@ impl std::fmt::Display for Endpoint {
             Self::Settings => write!(f, "settings"),
             Self::Statistics => write!(f, "statistics"),
             Self::Upload => write!(f, "upload"),
+            Self::List => write!(f, "list"),
         }
     }
 }
@@ -116,8 +118,8 @@ impl<T> Optional<T> for Option<T> {
     }
 }
 
-pub struct IntoOptionalConcrete;
-impl<A: Into<T>, T> Optional<T, IntoOptionalConcrete> for A {
+pub struct IntoOptionalFrom;
+impl<A: Into<T>, T> Optional<T, IntoOptionalFrom> for A {
     fn optional(self) -> Option<T> {
         Some(self.into())
     }

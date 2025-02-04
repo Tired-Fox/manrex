@@ -15,7 +15,7 @@ impl Client {
     pub async fn get_clients<M>(
         &mut self,
         filters: impl Optional<ClientFilter, M>,
-    ) -> Result<Paginated<Vec<ApiClient>>, Error> {
+    ) -> Result<Paginated<ApiClient>, Error> {
         self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
@@ -31,7 +31,7 @@ impl Client {
             .send()
             .await?;
 
-        res.manga_dex_response::<Paginated<Vec<ApiClient>>>().await
+        res.manga_dex_response::<Paginated<ApiClient>>().await
     }
 
     /// Create a new personal client

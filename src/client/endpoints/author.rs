@@ -13,7 +13,7 @@ impl Client {
     pub async fn list_authors<M>(
         &mut self,
         filters: impl Optional<AuthorFilter, M>,
-    ) -> Result<Paginated<Vec<Author>>, Error> {
+    ) -> Result<Paginated<Author>, Error> {
         self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
@@ -29,7 +29,7 @@ impl Client {
             .send()
             .await?;
 
-        res.manga_dex_response::<Paginated<Vec<Author>>>().await
+        res.manga_dex_response::<Paginated<Author>>().await
     }
 
     pub async fn create_author(&mut self, author: CreateAuthor) -> Result<Author, Error> {

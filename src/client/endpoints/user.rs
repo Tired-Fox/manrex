@@ -13,7 +13,7 @@ impl Client {
     pub async fn list_users<M>(
         &mut self,
         filter: impl Optional<UserFilter, M>,
-    ) -> Result<Paginated<Vec<User>>, Error> {
+    ) -> Result<Paginated<User>, Error> {
         self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
@@ -29,7 +29,7 @@ impl Client {
             .send()
             .await?;
 
-        res.manga_dex_response::<Paginated<Vec<User>>>().await
+        res.manga_dex_response::<Paginated<User>>().await
     }
 
     pub async fn get_user(&mut self, id: impl Into<UserId>) -> Result<User, Error> {

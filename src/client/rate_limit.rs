@@ -70,9 +70,9 @@ impl RateLimiter {
         }
 
         if self.general.limited() {
-            return Err(Error::http(StatusCode::TOO_MANY_REQUESTS, "general http request limit reached. Wait 1 second and try again"))
+            return Err(Error::http(StatusCode::TOO_MANY_REQUESTS, "general http request limit reached; wait 1 second and try again"))
         } else {
-            if Local::now() - self.general.retry_after  > Duration::seconds(1) {
+            if Local::now() - self.general.retry_after >= Duration::seconds(1) {
                 self.general.remaining = 5;
             }
 
@@ -80,7 +80,7 @@ impl RateLimiter {
             if self.general.remaining == 0 {
                 self.general.retry_after = Local::now() + Duration::seconds(1);
             } else {
-                self.general.retry_after = Local::now();
+                self.general.retry_after = Local::now() - Duration::seconds(1);
             }
         }
 

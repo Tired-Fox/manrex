@@ -1,17 +1,20 @@
 use author::AuthorAttributes;
 use chapter::ChapterAttributes;
 use cover::CoverAttributes;
+use custom_list::CustomListAttributes;
+use manga::{MangaAttributes, TagAttributes};
 use scanlation_group::ScanlationGroupAttributes;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{error::MangaDexError, uuid::RelationshipId, Error};
+use crate::{error::MangaDexError, Error, Uuid};
 
 pub mod at_home;
 pub mod author;
 pub mod chapter;
 pub mod client;
 pub mod cover;
+pub mod custom_list;
 pub mod forum;
 mod image;
 pub mod manga;
@@ -54,14 +57,14 @@ impl<D> IntoData<D> for D {
 
 #[derive(Deserialize, Serialize)]
 pub struct Paginated<D> {
-    pub data: D,
+    pub data: Vec<D>,
     pub offset: usize,
     pub limit: usize,
     pub total: usize,
 }
 
-impl<D> IntoData<D> for Paginated<D> {
-    fn into_data(self) -> D {
+impl<D> IntoData<Vec<D>> for Paginated<D> {
+    fn into_data(self) -> Vec<D> {
         self.data
     }
 }
@@ -93,6 +96,7 @@ pub enum Order {
     Asc,
     Desc,
 }
+
 impl std::fmt::Display for Order {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -105,23 +109,38 @@ impl std::fmt::Display for Order {
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, strum::EnumIs)]
 #[serde(tag = "type", content = "attributes", rename_all = "snake_case")]
 pub enum RelationshipAttributes {
+    Manga(Option<MangaAttributes>),
+    Chapter(Option<ChapterAttributes>),
     CoverArt(Option<CoverAttributes>),
     Author(Option<AuthorAttributes>),
-    ScanlationGroup(Option<ScanlationGroupAttributes>),
     Artist(Option<Value>),
-    Creator(Option<Value>),
+    ScanlationGroup(Option<ScanlationGroupAttributes>),
+    Tag(Option<TagAttributes>),
     User(Option<Value>),
-    Chapter(Option<ChapterAttributes>),
+    CustomList(Option<CustomListAttributes>),
     #[serde(untagged)]
-    Other(String, Option<Value>)
-    // TODO: Remaining types
+    Other(String),
 }
 
 impl RelationshipAttributes {
+    pub fn as_manga(self) -> Option<MangaAttributes> {
+        match self {
+            Self::Manga(c) => c,
+            _ => unreachable!("failed to unwrap RelationshipAttributes as MangaAttributes"),
+        }
+    }
+
+    pub fn as_chapter(self) -> Option<ChapterAttributes> {
+        match self {
+            Self::Chapter(c) => c,
+            _ => unreachable!("failed to unwrap RelationshipAttributes as ChapterAttributes"),
+        }
+    }
+
     pub fn as_cover_art(self) -> Option<CoverAttributes> {
         match self {
-            Self::CoverArt(ca) => ca,
-            _ => unreachable!("failed to unwrap RelationshipAttributes as CoverAttributes"),
+            Self::CoverArt(c) => c,
+            _ => unreachable!("failed to unwrap RelationshipAttributes as CoverArtAttributes"),
         }
     }
 
@@ -132,10 +151,40 @@ impl RelationshipAttributes {
         }
     }
 
-    pub fn as_chapter(self) -> Option<ChapterAttributes> {
+    pub fn as_artist(self) -> Option<Value> {
         match self {
-            Self::Chapter(c) => c,
-            _ => unreachable!("failed to unwrap RelationshipAttributes as ChapterAttributes"),
+            Self::Artist(c) => c,
+            _ => unreachable!("failed to unwrap RelationshipAttributes as ArtistAttributes"),
+        }
+    }
+
+    pub fn as_scanlation_group(self) -> Option<ScanlationGroupAttributes> {
+        match self {
+            Self::ScanlationGroup(c) => c,
+            _ => {
+                unreachable!("failed to unwrap RelationshipAttributes as ScanlationGroupAttributes")
+            }
+        }
+    }
+
+    pub fn as_tag(self) -> Option<TagAttributes> {
+        match self {
+            Self::Tag(c) => c,
+            _ => unreachable!("failed to unwrap RelationshipAttributes as TagAttributes"),
+        }
+    }
+
+    pub fn as_user(self) -> Option<Value> {
+        match self {
+            Self::User(c) => c,
+            _ => unreachable!("failed to unwrap RelationshipAttributes as UserAttributes"),
+        }
+    }
+
+    pub fn as_custom_list(self) -> Option<CustomListAttributes> {
+        match self {
+            Self::CustomList(c) => c,
+            _ => unreachable!("failed to unwrap RelationshipAttributes as CustomListAttributes"),
         }
     }
 }
@@ -143,7 +192,7 @@ impl RelationshipAttributes {
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Relationship {
-    pub id: RelationshipId,
+    pub id: Uuid,
     pub related: Option<Relation>,
     #[serde(flatten)]
     pub attributes: Option<RelationshipAttributes>,

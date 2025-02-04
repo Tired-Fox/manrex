@@ -13,7 +13,7 @@ impl Client {
     pub async fn list_chapters<M>(
         &mut self,
         filters: impl Optional<ChapterFilter, M>,
-    ) -> Result<Paginated<Vec<Chapter>>, Error> {
+    ) -> Result<Paginated<Chapter>, Error> {
         self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
@@ -29,7 +29,7 @@ impl Client {
             .send()
             .await?;
 
-        res.manga_dex_response::<Paginated<Vec<Chapter>>>().await
+        res.manga_dex_response::<Paginated<Chapter>>().await
     }
 
     pub async fn get_chapter(&mut self, id: impl Into<ChapterId>) -> Result<Chapter, Error> {

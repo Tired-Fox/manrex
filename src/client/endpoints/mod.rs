@@ -11,3 +11,4 @@ pub mod settings;
 pub mod statistics;
 pub mod user;
 pub mod upload;
+pub mod custom_list;

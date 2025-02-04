@@ -6,7 +6,7 @@ use crate::{
 
 // ---[ Report Endpoints ]---
 impl Client {
-    pub async fn list_report_reasons(&mut self, category: Category) -> Result<Paginated<Vec<ReportReason>>, Error> {
+    pub async fn list_report_reasons(&mut self, category: Category) -> Result<Paginated<ReportReason>, Error> {
         self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
@@ -20,10 +20,10 @@ impl Client {
             .send()
             .await?;
 
-        res.manga_dex_response::<Paginated<Vec<ReportReason>>>().await
+        res.manga_dex_response::<Paginated<ReportReason>>().await
     }
 
-    pub async fn list_user_reports<M>(&mut self, filter: impl Optional<ReportFilter, M>) -> Result<Paginated<Vec<Report>>, Error> {
+    pub async fn list_user_reports<M>(&mut self, filter: impl Optional<ReportFilter, M>) -> Result<Paginated<Report>, Error> {
         self.rate_limit.request("list_user_reports")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
@@ -38,7 +38,7 @@ impl Client {
 
         self.rate_limit.update("list_user_reports", &res)?;
 
-        res.manga_dex_response::<Paginated<Vec<Report>>>().await
+        res.manga_dex_response::<Paginated<Report>>().await
     }
 
     pub async fn create_report(&mut self, report: CreateReport) -> Result<(), Error> {

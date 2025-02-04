@@ -16,7 +16,7 @@ impl Client {
     pub async fn list_manga<M>(
         &mut self,
         filter: impl Optional<MangaFilter, M>,
-    ) -> Result<Paginated<Vec<Manga>>, Error> {
+    ) -> Result<Paginated<Manga>, Error> {
         self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
@@ -32,7 +32,7 @@ impl Client {
             .send()
             .await?;
 
-        res.manga_dex_response::<Paginated<Vec<Manga>>>().await
+        res.manga_dex_response::<Paginated<Manga>>().await
     }
 
     pub async fn get_manga_volumes_and_chapters<M1, M2>(
@@ -196,7 +196,7 @@ impl Client {
         &mut self,
         id: impl Into<MangaId>,
         filter: impl Optional<FeedFilter, M>,
-    ) -> Result<Paginated<Vec<Chapter>>, Error> {
+    ) -> Result<Paginated<Chapter>, Error> {
         self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
@@ -214,7 +214,7 @@ impl Client {
             .send()
             .await?;
 
-        res.manga_dex_response::<Paginated<Vec<Chapter>>>().await
+        res.manga_dex_response::<Paginated<Chapter>>().await
     }
 
     pub async fn get_random_manga<M>(
@@ -241,7 +241,7 @@ impl Client {
         res.manga_dex_response::<Data<Manga>>().await
     }
 
-    pub async fn get_manga_tag_list(&mut self) -> Result<Paginated<Vec<Tag>>, Error> {
+    pub async fn get_manga_tag_list(&mut self) -> Result<Paginated<Tag>, Error> {
         self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
@@ -257,7 +257,7 @@ impl Client {
             .send()
             .await?;
 
-        res.manga_dex_response::<Paginated<Vec<Tag>>>().await
+        res.manga_dex_response::<Paginated<Tag>>().await
     }
 
     pub async fn get_manga_reading_statuses<M>(
@@ -415,7 +415,7 @@ impl Client {
         &mut self,
         id: impl Into<MangaId>,
         includes: impl Optional<Vec<MangaInclude>, M>,
-    ) -> Result<Paginated<Vec<MangaRelation>>, Error> {
+    ) -> Result<Paginated<MangaRelation>, Error> {
         self.rate_limit.request("")?;
         if self.oauth().expired()? {
             self.oauth.refresh().await?;
@@ -433,7 +433,7 @@ impl Client {
             .send()
             .await?;
 
-        res.manga_dex_response::<Paginated<Vec<MangaRelation>>>()
+        res.manga_dex_response::<Paginated<MangaRelation>>()
             .await
     }
 

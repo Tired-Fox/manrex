@@ -98,6 +98,6 @@ macro_rules! impl_uid {
 
 impl_uid! {
     ChapterId, MangaId, ArtistId, AuthorId,
-    CoverId, ReasonId, ReportId, GroupId,
-    UploadSessionId, UserId, ClientId, TagId, RelationshipId
+    CoverId, ReasonId, ReportId, GroupId, ListId,
+    UploadSessionId, UserId, ClientId, TagId
 }

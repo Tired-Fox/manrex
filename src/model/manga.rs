@@ -285,7 +285,7 @@ pub struct MangaAttributes {
     pub content_rating: ContentRating,
     pub chapter_numbers_reset_on_new_volume: bool,
     pub available_translated_languages: Vec<String>,
-    pub latest_uploaded_chapter: String,
+    pub latest_uploaded_chapter: Option<String>,
     pub tags: Vec<Tag>,
     pub state: MangaState,
     pub version: usize,
