@@ -1,6 +1,7 @@
 use author::AuthorAttributes;
 use chapter::ChapterAttributes;
 use cover::CoverAttributes;
+use scanlation_group::ScanlationGroupAttributes;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -106,11 +107,13 @@ impl std::fmt::Display for Order {
 pub enum RelationshipAttributes {
     CoverArt(Option<CoverAttributes>),
     Author(Option<AuthorAttributes>),
+    ScanlationGroup(Option<ScanlationGroupAttributes>),
     Artist(Option<Value>),
     Creator(Option<Value>),
+    User(Option<Value>),
     Chapter(Option<ChapterAttributes>),
     #[serde(untagged)]
-    Other(String)
+    Other(String, Option<Value>)
     // TODO: Remaining types
 }
 

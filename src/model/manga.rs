@@ -59,15 +59,15 @@ pub struct MangaFilter {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub status: Option<Vec<Status>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub original_languages: Option<Vec<String>>,
+    pub original_language: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub excluded_original_languages: Option<Vec<String>>,
+    pub excluded_original_language: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub available_translated_languages: Option<Vec<String>>,
+    pub available_translated_language: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub publication_demographic: Option<HashSet<Demographic>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub content_ratings: Option<HashSet<ContentRating>>,
+    pub content_rating: Option<HashSet<ContentRating>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_at_since: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -155,7 +155,7 @@ impl MangaFilter {
         mut self,
         s: impl IntoIterator<Item = S>,
     ) -> Self {
-        self.original_languages = Some(s.into_iter().map(|v| v.to_string()).collect());
+        self.original_language = Some(s.into_iter().map(|v| v.to_string()).collect());
         self
     }
 
@@ -163,7 +163,7 @@ impl MangaFilter {
         mut self,
         s: impl IntoIterator<Item = S>,
     ) -> Self {
-        self.excluded_original_languages = Some(s.into_iter().map(|v| v.to_string()).collect());
+        self.excluded_original_language = Some(s.into_iter().map(|v| v.to_string()).collect());
         self
     }
 
@@ -171,7 +171,7 @@ impl MangaFilter {
         mut self,
         s: impl IntoIterator<Item = S>,
     ) -> Self {
-        self.available_translated_languages = Some(s.into_iter().map(|v| v.to_string()).collect());
+        self.available_translated_language = Some(s.into_iter().map(|v| v.to_string()).collect());
         self
     }
 
@@ -181,7 +181,7 @@ impl MangaFilter {
     }
 
     pub fn content_ratings(mut self, s: impl IntoIterator<Item = ContentRating>) -> Self {
-        self.content_ratings = Some(s.into_iter().collect());
+        self.content_rating = Some(s.into_iter().collect());
         self
     }
 
@@ -232,17 +232,17 @@ impl ExtendParams for MangaFilter {
             self.excluded_tags_mode.map(|v| v.to_string()),
         );
         request.add_param_opt("status", self.status);
-        request.add_param_opt("originalLanguages", self.original_languages);
+        request.add_param_opt("originalLanguage", self.original_language);
         request.add_param_opt(
-            "excludedOriginalLanguages",
-            self.excluded_original_languages,
+            "excludedOriginalLanguage",
+            self.excluded_original_language,
         );
         request.add_param_opt(
-            "availableTranslatedLanguages",
-            self.available_translated_languages,
+            "availableTranslatedLanguage",
+            self.available_translated_language,
         );
         request.add_param_opt("publicationDemographic", self.publication_demographic);
-        request.add_param_opt("contentRatings", self.content_ratings);
+        request.add_param_opt("contentRating", self.content_rating);
         request.add_param_opt("createdAtSince", self.created_at_since);
         request.add_param_opt("updatedAtSince", self.updated_at_since);
         request.add_param_opt("order", self.order);
@@ -347,7 +347,7 @@ impl<D> IntoData<D> for Volumes<D> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Volume {
     pub volume: String,
@@ -355,7 +355,7 @@ pub struct Volume {
     pub chapters: BTreeMap<String, VolumeChapter>,
 }
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct VolumeChapter {
     pub chapter: String,

@@ -35,17 +35,17 @@ pub struct ChapterFilter {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub manga: Option<MangaId>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub volumes: Option<Vec<String>>,
+    pub volume: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub chapters: Option<OneOrMany<ChapterId>>,
+    pub chapter: Option<OneOrMany<ChapterId>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub translated_languages: Option<Vec<String>>,
+    pub translated_language: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub original_languages: Option<Vec<String>>,
+    pub original_language: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub excluded_original_languages: Option<Vec<String>>,
+    pub excluded_original_language: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub content_ratings: Option<Vec<ContentRating>>,
+    pub content_rating: Option<Vec<ContentRating>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub exclude_groups: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -95,32 +95,32 @@ impl ChapterFilter {
         self
     }
     pub fn volumes<S: std::fmt::Display>(mut self, volumes: impl IntoIterator<Item = S>) -> Self {
-        self.volumes = Some(volumes.into_iter().map(|v| v.to_string()).collect());
+        self.volume = Some(volumes.into_iter().map(|v| v.to_string()).collect());
         self
     }
     pub fn chapters(mut self, chapters: impl Into<OneOrMany<ChapterId>>) -> Self {
-        self.chapters = Some(chapters.into());
+        self.chapter = Some(chapters.into());
         self
     }
     pub fn translated_languages<S: std::fmt::Display>(
         mut self,
         translated_languages: impl IntoIterator<Item = S>,
     ) -> Self {
-        self.translated_languages = Some(translated_languages.into_iter().map(|v| v.to_string()).collect());
+        self.translated_language = Some(translated_languages.into_iter().map(|v| v.to_string()).collect());
         self
     }
     pub fn original_languages<S: std::fmt::Display>(
         mut self,
         original_languages: impl IntoIterator<Item = S>,
     ) -> Self {
-        self.original_languages = Some(original_languages.into_iter().map(|v| v.to_string()).collect());
+        self.original_language = Some(original_languages.into_iter().map(|v| v.to_string()).collect());
         self
     }
     pub fn excluded_original_languages<S: std::fmt::Display>(
         mut self,
         excluded_original_languages: impl IntoIterator<Item = S>,
     ) -> Self {
-        self.excluded_original_languages = Some(
+        self.excluded_original_language = Some(
             excluded_original_languages
                 .into_iter()
                 .map(|v| v.to_string()).collect()
@@ -131,7 +131,7 @@ impl ChapterFilter {
         mut self,
         content_ratings: impl IntoIterator<Item = ContentRating>,
     ) -> Self {
-        self.content_ratings = Some(content_ratings.into_iter().collect());
+        self.content_rating = Some(content_ratings.into_iter().collect());
         self
     }
     pub fn exclude_groups<S: std::fmt::Display>(
@@ -190,15 +190,15 @@ impl ExtendParams for ChapterFilter {
         request.add_param_opt("groups", self.groups);
         request.add_param_opt("uploader", self.uploader);
         request.add_param_opt("manga", self.manga);
-        request.add_param_opt("volumes", self.volumes);
-        request.add_param_opt("chapter", self.chapters);
-        request.add_param_opt("translatedLanguages", self.translated_languages);
-        request.add_param_opt("originalLanguages", self.original_languages);
+        request.add_param_opt("volume", self.volume);
+        request.add_param_opt("chapter", self.chapter);
+        request.add_param_opt("translatedLanguage", self.translated_language);
+        request.add_param_opt("originalLanguage", self.original_language);
         request.add_param_opt(
-            "excludedOriginalLanguages",
-            self.excluded_original_languages,
+            "excludedOriginalLanguage",
+            self.excluded_original_language,
         );
-        request.add_param_opt("contentRatings", self.content_ratings);
+        request.add_param_opt("contentRating", self.content_rating);
         request.add_param_opt("excludeGroups", self.exclude_groups);
         request.add_param_opt("excludeUploaders", self.exclude_uploaders);
         if let Some(include_future_updates) = self.include_future_updates {

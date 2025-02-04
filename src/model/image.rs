@@ -4,6 +4,7 @@ use bytes::Bytes;
 use chrono::{DateTime, Local};
 use futures_util::{Stream, StreamExt};
 use reqwest::header::{CONTENT_TYPE, USER_AGENT};
+use serde::Serialize;
 use tokio::{io::AsyncWriteExt, time::Instant};
 
 use crate::{bail, client::{Endpoint, MangaDex, Request, CLIENT_NAME, CLIENT_VERSION}, error::ResponseToError, Error};
@@ -241,6 +242,7 @@ impl ImageStream {
 }
 
 /// Response Data for a full image.
+#[derive(Serialize)]
 pub struct ImageData {
     /// The `Content-Type` header value
     pub mime: String,

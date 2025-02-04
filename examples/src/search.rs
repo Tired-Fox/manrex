@@ -16,9 +16,13 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let mut client = Client::new(auth);
 
-    let title = "Cleric of Decay";
-    let manga = client.list_manga(MangaFilter::default().title(title)).await?;
+    let id = "47ab4765-d03f-4f6f-ab61-044c66170f8e";
+
+    //let title = "Cleric of Decay";
+    let manga = client.get_manga(id, None).await?;
+    let relations = client.get_manga_relation_list(id, None).await?;
     println!("{manga:#?}");
+    println!("{relations:#?}");
 
     Ok(())
 }
