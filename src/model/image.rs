@@ -35,6 +35,17 @@ impl Image {
         &self.file_name
     } 
 
+    /// Url to the image
+    ///
+    /// This link can be used for displaying the image in something like an html `img` tag; ex.
+    /// `<img src="{link}" />`.
+    ///
+    /// This link can be used to download the image. However, it may be better to use
+    /// [`Image::retrieve`] or [`Image::fetch`].
+    pub fn link(&self) -> &str {
+        &self.url
+    }
+
     /// Whether this image is still valid given the parent [`AtHome`][model::at_home::AtHome]'s
     /// expiration date and time
     pub fn expired(&self) -> bool {
